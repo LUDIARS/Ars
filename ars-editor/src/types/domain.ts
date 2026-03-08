@@ -18,6 +18,7 @@ export interface Task {
   description: string;
   inputs: PortDefinition[];
   outputs: PortDefinition[];
+  testCases?: string[];
 }
 
 export interface Component {

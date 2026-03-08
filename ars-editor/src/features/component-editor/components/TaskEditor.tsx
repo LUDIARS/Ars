@@ -1,4 +1,5 @@
 import type { Task, PortDefinition } from '@/types/domain';
+import { TestCaseEditor } from './TestCaseEditor';
 
 interface TaskEditorProps {
   tasks: Task[];
@@ -63,7 +64,7 @@ export function TaskEditor({ tasks, onChange }: TaskEditorProps) {
   const addTask = () => {
     onChange([
       ...tasks,
-      { name: '', description: '', inputs: [], outputs: [] },
+      { name: '', description: '', inputs: [], outputs: [], testCases: [] },
     ]);
   };
 
@@ -122,6 +123,10 @@ export function TaskEditor({ tasks, onChange }: TaskEditorProps) {
             ports={task.outputs}
             label="Outputs"
             onChange={(ports) => updateTask(index, 'outputs', ports)}
+          />
+          <TestCaseEditor
+            testCases={task.testCases ?? []}
+            onChange={(testCases) => updateTask(index, 'testCases', testCases)}
           />
         </div>
       ))}

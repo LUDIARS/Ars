@@ -6,14 +6,19 @@ import {
   MiniMap,
   BackgroundVariant,
   type ReactFlowInstance,
+  type Connection as FlowConnection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { useNodeEditor } from '../hooks/useNodeEditor';
+import { useUndoRedo } from '../hooks/useUndoRedo';
 import { useEditorStore } from '@/stores/editorStore';
+import { useProjectStore } from '@/stores/projectStore';
 import { ActorNode } from './ActorNode';
 import { GroupNode } from './GroupNode';
+import { ActorEdge } from './ActorEdge';
 import { ContextMenu } from './ContextMenu';
+import { validateConnection } from '@/lib/connection-validator';
 import type { AnyFlowNode } from '../types/nodes';
 
 const nodeTypes = {
@@ -21,12 +26,18 @@ const nodeTypes = {
   group: GroupNode,
 };
 
+const edgeTypes = {
+  actor: ActorEdge,
+};
+
 export function NodeCanvas() {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, activeScene } =
     useNodeEditor();
+  useUndoRedo();
   const openContextMenu = useEditorStore((s) => s.openContextMenu);
   const closeContextMenu = useEditorStore((s) => s.closeContextMenu);
   const setSelectedNodes = useEditorStore((s) => s.setSelectedNodes);
+  const project = useProjectStore((s) => s.project);
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance<AnyFlowNode> | null>(null);
   const [flowClickPos, setFlowClickPos] = useState<{ x: number; y: number } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -42,6 +53,22 @@ export function NodeCanvas() {
       openContextMenu(screenPos);
     },
     [rfInstance, openContextMenu],
+  );
+
+  const isValidConnection = useCallback(
+    (connection: FlowConnection | { source: string; target: string; sourceHandle?: string | null; targetHandle?: string | null }) => {
+      if (!activeScene) return false;
+      const result = validateConnection(
+        project,
+        activeScene,
+        connection.source,
+        connection.sourceHandle ?? null,
+        connection.target,
+        connection.targetHandle ?? null,
+      );
+      return result.valid;
+    },
+    [activeScene, project],
   );
 
   if (!activeScene) {
@@ -67,6 +94,9 @@ export function NodeCanvas() {
           setSelectedNodes(selectedNodes.map((n) => n.id));
         }}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={{ type: 'actor', animated: true }}
+        isValidConnection={isValidConnection}
         fitView
         deleteKeyCode="Delete"
         className="bg-zinc-900"

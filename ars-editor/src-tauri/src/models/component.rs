@@ -22,6 +22,8 @@ pub struct Task {
     pub description: String,
     pub inputs: Vec<PortDefinition>,
     pub outputs: Vec<PortDefinition>,
+    #[serde(rename = "testCases", skip_serializing_if = "Option::is_none")]
+    pub test_cases: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
