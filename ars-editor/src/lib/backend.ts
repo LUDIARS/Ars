@@ -48,7 +48,6 @@ export async function getDefaultProjectPath(): Promise<string> {
 
 export async function listProjects(): Promise<string[]> {
   if (isTauri()) {
-    const dir = await getDefaultProjectPath();
     // Tauri doesn't have a list command built-in, return empty
     return [];
   }
