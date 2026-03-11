@@ -3,3 +3,6 @@
 /target/
 /gen/schemas
 target/
+.env
+.env.local
+.env.*.local

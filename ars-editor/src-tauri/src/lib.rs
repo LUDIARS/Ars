@@ -1,6 +1,12 @@
 pub mod commands;
 pub mod models;
 #[cfg(feature = "web-server")]
+pub mod app_state;
+#[cfg(feature = "web-server")]
+pub mod auth;
+#[cfg(feature = "web-server")]
+pub mod dynamo;
+#[cfg(feature = "web-server")]
 pub mod web_server;
 
 #[cfg(feature = "tauri-app")]
