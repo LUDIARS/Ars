@@ -3,6 +3,7 @@ import { useProjectStore } from '@/stores/projectStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { canUndo, canRedo, undo, redo } from '@/stores/historyMiddleware';
 import * as backend from '@/lib/backend';
+import { UserMenu } from './UserMenu';
 
 export function Toolbar() {
   const project = useProjectStore((s) => s.project);
@@ -192,6 +193,8 @@ export function Toolbar() {
       {status && (
         <span className="text-green-400 ml-2">{status}</span>
       )}
+      <div className="w-px h-4 bg-zinc-600 mx-1" />
+      <UserMenu />
     </div>
   );
 }

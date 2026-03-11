@@ -20,7 +20,21 @@ tauri-build = { version = "2.5.6", optional = true }
 [features]
 default = ["tauri-app"]
 tauri-app = ["dep:tauri", "dep:tauri-plugin-log", "dep:tauri-build"]
-web-server = ["dep:axum", "dep:tokio", "dep:tower-http"]
+web-server = [
+    "dep:axum",
+    "dep:tokio",
+    "dep:tower-http",
+    "dep:reqwest",
+    "dep:jsonwebtoken",
+    "dep:uuid",
+    "dep:chrono",
+    "dep:tower",
+    "dep:axum-extra",
+    "dep:aws-config",
+    "dep:aws-sdk-dynamodb",
+    "dep:time",
+    "dep:urlencoding",
+]
 
 [[bin]]
 name = "app"
@@ -42,3 +56,15 @@ dirs-next = "2.0"
 axum = { version = "0.7", optional = true }
 tokio = { version = "1", features = ["full"], optional = true }
 tower-http = { version = "0.5", features = ["cors", "fs"], optional = true }
+# OAuth & Auth
+reqwest = { version = "0.12", features = ["json"], optional = true }
+jsonwebtoken = { version = "9", optional = true }
+uuid = { version = "1", features = ["v4"], optional = true }
+chrono = { version = "0.4", features = ["serde"], optional = true }
+tower = { version = "0.5", features = ["util"], optional = true }
+axum-extra = { version = "0.9", features = ["cookie"], optional = true }
+time = { version = "0.3", optional = true }
+urlencoding = { version = "2", optional = true }
+# AWS DynamoDB
+aws-config = { version = "1", optional = true }
+aws-sdk-dynamodb = { version = "1", optional = true }
