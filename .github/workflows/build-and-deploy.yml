@@ -14,6 +14,15 @@ on:
         required: false
         type: boolean
         default: false
+      instance_type:
+        description: 'Build instance type (override vars.BUILD_INSTANCE_ID to use a different instance)'
+        required: false
+        type: choice
+        options:
+          - '(default from variable)'
+          - c7g.large
+          - c7g.xlarge
+          - c7g.2xlarge
 
 # 同時実行を防止 (ビルドインスタンスは1台のため)
 concurrency:
@@ -25,9 +34,12 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: ap-northeast-1
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
   BUILD_INSTANCE_ID: ${{ vars.BUILD_INSTANCE_ID }}
   S3_BUCKET: ${{ vars.S3_BUCKET || 'ars-build-artifacts' }}
+  # インスタンスタイプ変更は EC2 コンソールまたは AWS CLI で事前に行う必要があります。
+  # workflow_dispatch の instance_type 入力は、起動前にインスタンスタイプを変更します。
+  BUILD_INSTANCE_TYPE: ${{ inputs.instance_type }}
 
 jobs:
   build:
@@ -42,6 +54,37 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_BUILD_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Change instance type (if specified)
+        if: inputs.instance_type && inputs.instance_type != '(default from variable)'
+        run: |
+          DESIRED_TYPE="${{ inputs.instance_type }}"
+          echo "Changing instance type to: $DESIRED_TYPE"
+
+          # 停止中であることを確認
+          STATE=$(aws ec2 describe-instances \
+            --instance-ids "$BUILD_INSTANCE_ID" \
+            --query 'Reservations[0].Instances[0].State.Name' \
+            --output text)
+
+          if [ "$STATE" != "stopped" ]; then
+            echo "::error::Instance must be stopped to change type (current: $STATE)"
+            exit 1
+          fi
+
+          CURRENT_TYPE=$(aws ec2 describe-instances \
+            --instance-ids "$BUILD_INSTANCE_ID" \
+            --query 'Reservations[0].Instances[0].InstanceType' \
+            --output text)
+
+          if [ "$CURRENT_TYPE" = "$DESIRED_TYPE" ]; then
+            echo "Instance is already $DESIRED_TYPE, no change needed"
+          else
+            aws ec2 modify-instance-attribute \
+              --instance-id "$BUILD_INSTANCE_ID" \
+              --instance-type "{\"Value\": \"$DESIRED_TYPE\"}"
+            echo "Changed: $CURRENT_TYPE -> $DESIRED_TYPE"
+          fi
 
       - name: Start build instance
         id: start
