@@ -1,0 +1,169 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Ars Editor CI/CD infrastructure.
+  EC2 self-hosted runner (c7g.xlarge) + Lambda webhook to wake instance.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC for the runner instance
+
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public subnet for the runner instance
+
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: SSH key pair for instance access
+
+  GitHubWebhookSecret:
+    Type: String
+    NoEcho: true
+    Description: Secret for GitHub webhook signature verification
+
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id
+    Description: Ubuntu 24.04 ARM64 AMI
+
+Resources:
+  # === EC2 Runner ===
+
+  RunnerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Ars CI runner - outbound only
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  RunnerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SelfStop
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ec2:StopInstances
+                Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringEquals:
+                    "ec2:ResourceTag/Name": "ars-ci-runner"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  RunnerInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref RunnerRole
+
+  RunnerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: c7g.xlarge
+      ImageId: !Ref AmiId
+      KeyName: !Ref KeyPairName
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref RunnerSecurityGroup
+      IamInstanceProfile: !Ref RunnerInstanceProfile
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 50
+            VolumeType: gp3
+      Tags:
+        - Key: Name
+          Value: ars-ci-runner
+
+  # === Lambda Webhook ===
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Ec2StartAndDescribe
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:StartInstances
+                  - ec2:DescribeInstances
+                Resource: "*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  WebhookFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ars-ci-webhook
+      Runtime: python3.13
+      Handler: webhook_handler.handler
+      Timeout: 10
+      MemorySize: 128
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          INSTANCE_ID: !Ref RunnerInstance
+          WEBHOOK_SECRET: !Ref GitHubWebhookSecret
+      Code:
+        ZipFile: |
+          # Placeholder - deploy actual code from infra/lambda/webhook_handler.py
+          def handler(event, context):
+              return {"statusCode": 200}
+
+  WebhookFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      AuthType: NONE
+      TargetFunctionArn: !GetAtt WebhookFunction.Arn
+
+  WebhookFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunctionUrl
+      FunctionName: !Ref WebhookFunction
+      FunctionUrlAuthType: NONE
+      Principal: "*"
+
+Outputs:
+  InstanceId:
+    Value: !Ref RunnerInstance
+    Description: EC2 Instance ID for the runner
+
+  WebhookUrl:
+    Value: !GetAtt WebhookFunctionUrl.FunctionUrl
+    Description: >
+      Set this as the GitHub webhook URL.
+      Settings > Webhooks > Payload URL
+
+  SetupInstructions:
+    Value: !Sub |
+      1. SSH into the instance and run runner-setup.sh
+      2. Set webhook URL in GitHub repo settings
+      3. Instance will auto-stop after 5min idle
+    Description: Post-deployment steps
