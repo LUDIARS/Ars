@@ -16,11 +16,16 @@ pub fn run() {
             ModuleRegistryService::new(cache_dir)
         });
 
-    let depot_service = ResourceDepotService::with_defaults()
+    let depot_file = dirs::home_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join(".ars")
+        .join("resource-depot")
+        .join("depot.json");
+
+    let depot_service = ResourceDepotService::new(depot_file)
         .unwrap_or_else(|e| {
-            eprintln!("Warning: Failed to initialize resource depot with defaults: {}", e);
-            let cache_dir = std::env::temp_dir().join("ars").join("resource-depot");
-            ResourceDepotService::new(cache_dir)
+            eprintln!("Warning: Failed to initialize resource depot reader: {}", e);
+            ResourceDepotService::with_defaults()
                 .expect("Failed to initialize resource depot")
         });
 
@@ -39,30 +44,16 @@ pub fn run() {
             commands::search_modules,
             commands::get_registry_sources,
             commands::get_module_by_id,
-            // リソースデポ
-            commands::resource_depot::register_resource,
-            commands::resource_depot::remove_resource,
+            // リソースデポ（リードオンリー）
+            commands::resource_depot::reload_depot,
             commands::resource_depot::get_all_resources,
             commands::resource_depot::get_resources_by_category,
             commands::resource_depot::search_resources,
             commands::resource_depot::get_resource_by_id,
-            commands::resource_depot::register_bone_pattern,
-            commands::resource_depot::remove_bone_pattern,
             commands::resource_depot::get_bone_patterns,
-            commands::resource_depot::detect_bone_pattern,
             commands::resource_depot::find_compatible_motions,
-            commands::resource_depot::assign_motions_to_model,
-            commands::resource_depot::create_motion_group,
-            commands::resource_depot::update_motion_group,
-            commands::resource_depot::remove_motion_group,
             commands::resource_depot::get_motion_groups,
-            commands::resource_depot::create_texture_group,
-            commands::resource_depot::update_texture_group,
-            commands::resource_depot::remove_texture_group,
             commands::resource_depot::get_texture_groups,
-            commands::resource_depot::add_cloud_config,
-            commands::resource_depot::set_cloud_reference,
-            commands::resource_depot::find_duplicate_resources,
             commands::resource_depot::get_depot_state,
         ])
         .run(tauri::generate_context!())

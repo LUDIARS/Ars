@@ -699,45 +699,27 @@ src/
 ローカルで作成したモデルデータをGoogleDrive等のクラウドストレージを経由して共有可能にするリソース管理システム。
 「リソース」は概ね1MB以上のデータ（フォント、モデル、テクスチャ、モーション、サウンド）を指す。
 
+**ツールとモジュールの分離:**
+- **Resource Depot ツール** (`resource-depot/`): PC専用のスタンドアロンTauriアプリ。リソースの登録・編集・D&D管理・エクスポートを行う
+- **リードオンリーモジュール** (`src-tauri/`, `src/`): Ars / Ars-Editor がデポデータを参照するための読み取り専用モジュール
+
 ```
 ┌─────────────────────────────────────────────────────┐
-│  クラウドストレージ (Google Drive等)                   │
-│  ├── fonts/                                         │
-│  ├── models/                                        │
-│  ├── textures/                                      │
-│  ├── motions/                                       │
-│  └── sounds/                                        │
-└──────────────┬──────────────────────────────────────┘
-               │ 同期 (アップロード/ダウンロード)
-               ▼
-┌─────────────────────────────────────────────────────┐
-│  Rust Backend (Resource Depot Service)              │
-│  ├── ResourceDepotService … リソース登録・管理       │
-│  │   ├── ファイルハッシュ(SHA-256)による重複検出     │
-│  │   ├── ボーンパターン適合検出                      │
-│  │   └── モーション/テクスチャグループ管理           │
-│  └── CloudStorage         … クラウド同期            │
+│  Resource Depot ツール (PC専用スタンドアロンアプリ)    │
+│  ├── D&D ファイル管理                                │
+│  │   └── 日本語名 → 英語内部名の変換                 │
+│  ├── MB → FBX オートエクスポート                      │
+│  ├── リソース登録・削除・編集                         │
+│  ├── ボーンパターン / グループ管理                    │
+│  ├── クラウドストレージ同期                           │
+│  └── SHA-256 重複検出                                │
 ├─────────────────────────────────────────────────────┤
-│  ローカルキャッシュ                                  │
-│  ~/.ars/resource-depot/                              │
-│  ├── font/       (フォントファイル)                  │
-│  ├── model/      (モデルファイル)                    │
-│  ├── texture/    (テクスチャファイル)                 │
-│  ├── motion/     (モーションファイル)                 │
-│  ├── sound/      (サウンドファイル)                   │
-│  └── depot.json  (デポ設定・メタデータ)              │
-└──────────────┬──────────────────────────────────────┘
-               │ Tauri invoke
-               ▼
-┌─────────────────────────────────────────────────────┐
-│  React Frontend                                     │
-│  ├── resourceDepotStore (Zustand)                   │
-│  │   ├── resources[]        … 登録済みリソース      │
-│  │   ├── bonePatterns[]     … ボーンパターン定義    │
-│  │   ├── motionGroups[]     … モーショングループ    │
-│  │   ├── textureGroups[]    … テクスチャグループ    │
-│  │   └── filteredResources()… 検索・フィルタ        │
-│  └── resource-depot-api     … Tauriコマンド連携     │
+│  共有データ: ~/.ars/resource-depot/depot.json         │
+├─────────────────────────────────────────────────────┤
+│  Ars / Ars-Editor (リードオンリーモジュール)          │
+│  ├── depot.json を読み取り専用で参照                  │
+│  ├── reload_depot で最新データを再取得               │
+│  └── ゲーム内設定の変更のみ可能                      │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -776,45 +758,109 @@ src/
 - サウンドID: プロジェクト内のユニーク識別子
 - カテゴリ: BGM / SE / Voice / Ambient
 
-### 12.7 Tauri Commands (API)
+### 12.7 D&Dファイル管理とネーミング
+
+PC上でファイルをD&Dしてリソースを登録する:
+
+1. **ファイルドロップ**: D&Dでファイルパスを受け取り
+2. **カテゴリ自動推定**: 拡張子から（.fbx→model, .png→texture, .wav→sound等）
+3. **英語名自動生成**: 日本語ファイル名からカテゴリプレフィックス付き英語名を生成
+   - 例: `歩きモーション.bvh` → `mot_walk_motion.bvh`
+4. **ユーザー確認**: 英語名・カテゴリ・役割をユーザーが編集・確定
+5. **登録**: ハッシュ計算 + ローカルキャッシュにコピー
+
+**ネーミング設定:**
+- カテゴリプレフィックス: `fnt_`, `mdl_`, `tex_`, `mot_`, `snd_`
+- カスタムルール: 日本語パターン → 英語名のマッピング
+
+### 12.8 MB→FBXオートエクスポート
+
+Maya Binary (.mb/.ma) ファイルをFBXに自動変換:
+
+1. **Maya自動検出**: Windows/macOS/Linux共通パスからmayabatchを検出
+2. **MELスクリプト生成**: FBXエクスポート用のMELスクリプトを自動生成
+3. **バッチ実行**: mayabatch経由でエクスポート
+4. **設定可能項目**: FBXバージョン、アニメーションベイク、スケルトンエクスポート
+
+### 12.9 Tauri Commands
+
+**Resource Depot ツール（フルアクセス）:**
 
 | コマンド | 説明 |
 |---------|------|
-| `register_resource` | ローカルファイルからリソース登録 |
+| `register_resource` | リソース登録（日本語名→英語名変換込み） |
 | `remove_resource` | リソース削除 |
+| `register_bone_pattern` | ボーンパターン登録 |
+| `detect_bone_pattern` | ボーンパターン自動検出 |
+| `assign_motions_to_model` | モーションアサイン |
+| `create_motion_group` | モーショングループ作成 |
+| `create_texture_group` | テクスチャグループ作成 |
+| `add_cloud_config` | クラウドストレージ設定 |
+| `analyze_dropped_files` | D&Dファイル解析 |
+| `generate_english_name` | 英語名生成 |
+| `export_mb_to_fbx` | MB→FBXエクスポート |
+| `find_duplicate_resources` | 重複検出 |
+
+**リードオンリーモジュール（Ars / Ars-Editor用）:**
+
+| コマンド | 説明 |
+|---------|------|
+| `reload_depot` | depot.jsonを再読み込み |
 | `get_all_resources` | 全リソース取得 |
 | `get_resources_by_category` | カテゴリ別取得 |
-| `search_resources` | ファイル名・役割で検索 |
-| `register_bone_pattern` | ボーンパターン登録 |
-| `detect_bone_pattern` | モデルのボーンパターン自動検出 |
-| `find_compatible_motions` | パターン適合モーション検索 |
-| `assign_motions_to_model` | モデルにモーションアサイン |
-| `create_motion_group` | モーショングループ作成 |
-| `update_motion_group` | モーショングループ更新 |
-| `create_texture_group` | テクスチャグループ作成 |
-| `update_texture_group` | テクスチャグループ更新 |
-| `add_cloud_config` | クラウドストレージ設定追加 |
-| `set_cloud_reference` | リソースにクラウド参照設定 |
-| `find_duplicate_resources` | 重複リソース検出 |
+| `search_resources` | 検索 |
+| `get_resource_by_id` | ID指定取得 |
+| `get_bone_patterns` | ボーンパターン取得 |
+| `find_compatible_motions` | 適合モーション検索 |
+| `get_motion_groups` | モーショングループ取得 |
+| `get_texture_groups` | テクスチャグループ取得 |
+| `get_depot_state` | デポ全体取得 |
 
-### 12.8 ファイル構成
+### 12.10 ファイル構成
 
 ```
-src-tauri/src/
-├── models/
-│   └── resource_depot.rs    # リソースデポデータモデル
-├── services/
-│   └── resource_depot.rs    # ResourceDepotService
-└── commands/
-    └── resource_depot.rs    # Tauriコマンド定義
+resource-depot/                      # スタンドアロンツール
+├── src-tauri/
+│   ├── src/
+│   │   ├── models/
+│   │   │   ├── resource.rs          # リソースモデル（original_filename付き）
+│   │   │   ├── naming.rs            # ネーミングモデル
+│   │   │   └── export.rs            # エクスポートモデル
+│   │   ├── services/
+│   │   │   ├── depot.rs             # ResourceDepotService（フルアクセス）
+│   │   │   ├── naming.rs            # NamingService（日本語→英語変換）
+│   │   │   └── export.rs            # ExportService（MB→FBX）
+│   │   ├── commands/
+│   │   │   ├── depot.rs             # デポコマンド
+│   │   │   ├── naming.rs            # ネーミングコマンド
+│   │   │   └── export.rs            # エクスポートコマンド
+│   │   └── lib.rs
+│   └── tauri.conf.json
+└── src/
+    ├── types/                       # ツール固有の型定義
+    │   ├── resource-depot.ts
+    │   ├── naming.ts
+    │   └── export.ts
+    └── services/                    # ツール用APIバインディング
+        ├── depot-api.ts
+        ├── naming-api.ts
+        └── export-api.ts
 
-src/
-├── types/
-│   └── resource-depot.ts    # TypeScript型定義
+src-tauri/src/                       # リードオンリーモジュール
+├── models/
+│   └── resource_depot.rs            # 共有データモデル
 ├── services/
-│   └── resource-depot-api.ts # Tauriコマンドバインディング
+│   └── resource_depot.rs            # リードオンリーサービス
+└── commands/
+    └── resource_depot.rs            # リードオンリーコマンド
+
+src/                                 # 共有TypeScript（リードオンリー）
+├── types/
+│   └── resource-depot.ts
+├── services/
+│   └── resource-depot-api.ts
 └── stores/
-    └── resourceDepotStore.ts # Zustandストア
+    └── resourceDepotStore.ts
 ```
 
 ---
