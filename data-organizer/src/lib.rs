@@ -5,6 +5,9 @@ pub mod user_data;
 pub mod organizer;
 pub mod error;
 
+#[cfg(feature = "web-server")]
+pub mod web_server;
+
 pub use error::DataOrganizerError;
 pub use master_data::{MasterDataEntry, MasterDataRegistry};
 pub use blackboard::Blackboard;

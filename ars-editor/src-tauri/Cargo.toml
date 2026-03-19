@@ -1,14 +1,12 @@
 [package]
 name = "app"
 version = "0.1.0"
-description = "A Tauri App"
+description = "Ars - コンテンツ生成ゲームエンジン & エディタ"
 authors = ["you"]
 license = ""
 repository = ""
 edition = "2021"
 rust-version = "1.77.2"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 name = "app_lib"
@@ -35,6 +33,9 @@ web-server = [
     "dep:time",
     "dep:urlencoding",
     "dep:git2",
+    "dep:dirs",
+    "resource-depot/web-server",
+    "data-organizer/web-server",
 ]
 
 [[bin]]
@@ -71,3 +72,7 @@ aws-config = { version = "1", optional = true }
 aws-sdk-dynamodb = { version = "1", optional = true }
 # Git operations
 git2 = { version = "0.19", optional = true }
+# Module crates
+resource-depot = { path = "../../resource-depot/src-tauri", default-features = false, optional = true }
+data-organizer = { path = "../../data-organizer", default-features = false, optional = true }
+dirs = { version = "6", optional = true }

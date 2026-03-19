@@ -19,6 +19,10 @@ export default defineConfig({
         target: 'http://localhost:5173',
         changeOrigin: true,
       },
+      '/auth': {
+        target: 'http://localhost:5173',
+        changeOrigin: true,
+      },
     },
   },
   envPrefix: ['VITE_', 'TAURI_'],

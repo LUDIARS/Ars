@@ -1,14 +1,20 @@
-pub mod commands;
 pub mod models;
 pub mod services;
 
-use commands::depot::DepotState;
-use commands::naming::NamingState;
-use commands::export::ExportState;
-use services::{ResourceDepotService, NamingService, ExportService};
-use std::sync::Mutex;
+#[cfg(feature = "tauri-app")]
+pub mod commands;
 
+#[cfg(feature = "web-server")]
+pub mod web_server;
+
+#[cfg(feature = "tauri-app")]
 pub fn run() {
+    use commands::depot::DepotState;
+    use commands::naming::NamingState;
+    use commands::export::ExportState;
+    use services::{ResourceDepotService, NamingService, ExportService};
+    use std::sync::Mutex;
+
     let cache_dir = dirs::home_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join(".ars")
