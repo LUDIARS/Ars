@@ -26,6 +26,8 @@ export function Toolbar() {
   const setMobileSceneMenu = useEditorStore((s) => s.setMobileSceneMenu);
   const mobileBottomSheetOpen = useEditorStore((s) => s.mobileBottomSheetOpen);
   const setMobileBottomSheet = useEditorStore((s) => s.setMobileBottomSheet);
+  const isGenerating = useEditorStore((s) => s.isGenerating);
+  const abortGeneration = useEditorStore((s) => s.abortGeneration);
   const activeGitRepo = useAuthStore((s) => s.activeGitRepo);
   const [status, setStatus] = useState<string>('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -154,7 +156,7 @@ export function Toolbar() {
 
         {/* Undo/Redo */}
         <button
-          onClick={() => { undo(); markDirty(); }}
+          onClick={() => { if (isGenerating) abortGeneration(); undo(); markDirty(); }}
           disabled={!canUndo()}
           className="px-2 py-1 text-zinc-300 hover:bg-zinc-700 rounded transition-colors disabled:opacity-30"
           title="Undo"

@@ -23,6 +23,10 @@ interface EditorState {
   mobileSceneMenuOpen: boolean;
   mobileBottomSheetOpen: boolean;
 
+  /** AI code generation state */
+  isGenerating: boolean;
+  generationAbortController: AbortController | null;
+
   setSelectedNodes: (ids: string[]) => void;
   openContextMenu: (pos: { x: number; y: number }) => void;
   closeContextMenu: () => void;
@@ -42,6 +46,13 @@ interface EditorState {
   setProjectPath: (path: string | null) => void;
   setMobileSceneMenu: (open: boolean) => void;
   setMobileBottomSheet: (open: boolean) => void;
+
+  /** Start AI code generation, returns an AbortController to cancel it */
+  startGeneration: () => AbortController;
+  /** Mark AI code generation as finished */
+  finishGeneration: () => void;
+  /** Abort running AI code generation */
+  abortGeneration: () => void;
 }
 
 export const useEditorStore = create<EditorState>()((set) => ({
@@ -65,6 +76,8 @@ export const useEditorStore = create<EditorState>()((set) => ({
   projectPath: null,
   mobileSceneMenuOpen: false,
   mobileBottomSheetOpen: false,
+  isGenerating: false,
+  generationAbortController: null,
 
   setSelectedNodes: (ids) => set({ selectedNodeIds: ids }),
   openContextMenu: (pos) => set({ contextMenu: pos }),
@@ -105,4 +118,19 @@ export const useEditorStore = create<EditorState>()((set) => ({
   setProjectPath: (path) => set({ projectPath: path }),
   setMobileSceneMenu: (open) => set({ mobileSceneMenuOpen: open }),
   setMobileBottomSheet: (open) => set({ mobileBottomSheetOpen: open }),
+
+  startGeneration: () => {
+    const controller = new AbortController();
+    set({ isGenerating: true, generationAbortController: controller });
+    return controller;
+  },
+  finishGeneration: () =>
+    set({ isGenerating: false, generationAbortController: null }),
+  abortGeneration: () => {
+    const { generationAbortController } = useEditorStore.getState();
+    if (generationAbortController) {
+      generationAbortController.abort();
+    }
+    set({ isGenerating: false, generationAbortController: null });
+  },
 }));
