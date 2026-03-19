@@ -10,6 +10,8 @@ pub mod dynamo;
 pub mod git_ops;
 #[cfg(feature = "web-server")]
 pub mod web_server;
+#[cfg(feature = "web-server")]
+pub mod web_modules;
 
 #[cfg(feature = "tauri-app")]
 pub fn run() {
