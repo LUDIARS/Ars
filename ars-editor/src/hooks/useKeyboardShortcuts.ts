@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { undo, redo } from '@/stores/historyMiddleware';
+import { useEditorStore } from '@/stores/editorStore';
 
 interface KeyboardShortcutOptions {
   onSave?: () => void;
@@ -20,6 +21,11 @@ export function useKeyboardShortcuts(options: KeyboardShortcutOptions = {}) {
 
       if (isCtrl && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
+        // Abort AI code generation if running before undo
+        const { isGenerating, abortGeneration } = useEditorStore.getState();
+        if (isGenerating) {
+          abortGeneration();
+        }
         undo();
       } else if (isCtrl && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
