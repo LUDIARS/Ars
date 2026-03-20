@@ -4,53 +4,63 @@
 # Stage 1: Frontend build (React + Vite)
 # Stage 2: Backend build (Rust + Axum)
 # Stage 3: Runtime
+#
+# 使用方法:
+#   docker build -t ars .
 # =============================================================================
 
-# --- Stage 1: Frontend Build ---
+# ----- Stage 1: Frontend build -----
 FROM node:20-slim AS frontend-builder
+
 WORKDIR /app
 
 COPY ars-editor/package.json ars-editor/package-lock.json* ./
-RUN npm ci --ignore-scripts 2>/dev/null || npm install
+RUN npm ci
 
 COPY ars-editor/ .
 RUN npm run build
 
-# --- Stage 2: Backend Build ---
-FROM rust:1-bookworm AS backend-builder
+# ----- Stage 2: Rust web server build -----
+FROM rust:1-bookworm AS server-builder
+
 WORKDIR /app
 
-# Copy all Cargo files for dependency resolution
-COPY ars-editor/src-tauri/Cargo.toml ars-editor/src-tauri/Cargo.toml
-COPY resource-depot/src-tauri/Cargo.toml resource-depot/src-tauri/Cargo.toml
-COPY data-organizer/Cargo.toml data-organizer/Cargo.toml
+# モジュールクレートをコピー
+COPY resource-depot/src-tauri/ resource-depot/src-tauri/
+COPY data-organizer/ data-organizer/
 
-# Copy source code
-COPY ars-editor/src-tauri/src/ ars-editor/src-tauri/src/
-COPY resource-depot/src-tauri/src/ resource-depot/src-tauri/src/
-COPY resource-depot/src-tauri/build.rs resource-depot/src-tauri/build.rs
-COPY data-organizer/src/ data-organizer/src/
-
-# Install system dependencies for git2/openssl
-RUN apt-get update && apt-get install -y \
-    pkg-config libssl-dev libgit2-dev cmake \
-    && rm -rf /var/lib/apt/lists/*
-
+# メインクレートの依存キャッシュ
 WORKDIR /app/ars-editor/src-tauri
+COPY ars-editor/src-tauri/Cargo.toml ars-editor/src-tauri/Cargo.lock* ./
+RUN mkdir -p src/commands src/models src/web_modules && \
+    echo "pub fn dummy() {}" > src/lib.rs && \
+    echo "fn main() {}" > src/web_main.rs && \
+    cargo build --features web-server --no-default-features --bin ars-web-server --release 2>/dev/null || true && \
+    rm -rf src
+
+# ソースコードをコピーしてビルド
+COPY ars-editor/src-tauri/ .
 RUN cargo build --features web-server --no-default-features --bin ars-web-server --release
 
-# --- Stage 3: Runtime ---
+# ----- Stage 3: Runtime -----
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y \
-    ca-certificates libssl3 libgit2-1.5 \
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -m ars
-USER ars
+RUN useradd -r -s /bin/false ars
+
 WORKDIR /app
 
-COPY --from=backend-builder /app/ars-editor/src-tauri/target/release/ars-web-server ./ars-web-server
+COPY --from=server-builder /app/ars-editor/src-tauri/target/release/ars-web-server ./ars-web-server
 COPY --from=frontend-builder /app/dist ./dist
 
+RUN chown -R ars:ars /app
+USER ars
+
+ENV PORT=5173
 EXPOSE 5173
+
 CMD ["./ars-web-server", "./dist"]
