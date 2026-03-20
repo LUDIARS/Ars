@@ -103,7 +103,7 @@ async fn api_create_entry(
     let entry = org
         .master_data_mut()
         .add_entry(&schema_id, req.entry_id, req.actor_id)
-        .map(|e| e.clone())
+        .cloned()
         .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
     state.save_organizer(&org)?;
     Ok(Json(entry))
