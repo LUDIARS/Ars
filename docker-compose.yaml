@@ -18,9 +18,7 @@
 services:
   ars:
     image: ghcr.io/ludiars/ars:${IMAGE_TAG:-latest}
-    build:
-      context: .
-      dockerfile: ars-editor/Dockerfile
+    build: .
     container_name: ars
     ports:
       - "${ARS_PORT:-5173}:5173"

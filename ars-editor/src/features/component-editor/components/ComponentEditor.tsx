@@ -38,15 +38,13 @@ export function ComponentEditor() {
   const [isDirty, setIsDirty] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
-    if (existingComponent) {
-      setDraft(existingComponent);
-    } else {
-      setDraft(createEmptyComponent());
-    }
+    setDraft(existingComponent ?? createEmptyComponent());
     setIsDirty(false);
     setErrors({});
-  }, [existingComponent]);
+  }, [componentEditorTarget]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   const allComponents = useMemo(() => Object.values(project.components), [project.components]);
 
