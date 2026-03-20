@@ -14,10 +14,13 @@ import { useNodeEditor } from '../hooks/useNodeEditor';
 import { useUndoRedo } from '../hooks/useUndoRedo';
 import { useEditorStore } from '@/stores/editorStore';
 import { useProjectStore } from '@/stores/projectStore';
+import { useCollabStore } from '@/stores/collabStore';
 import { ActorNode } from './ActorNode';
 import { GroupNode } from './GroupNode';
 import { ActorEdge } from './ActorEdge';
 import { ContextMenu } from './ContextMenu';
+import { CollabCursors } from './CollabCursors';
+import { CollabLocks } from './CollabLocks';
 import { HelpTooltip } from '@/components/HelpTooltip';
 import { helpContent } from '@/lib/help-content';
 import { validateConnection } from '@/lib/connection-validator';
@@ -40,6 +43,8 @@ export function NodeCanvas() {
   const closeContextMenu = useEditorStore((s) => s.closeContextMenu);
   const setSelectedNodes = useEditorStore((s) => s.setSelectedNodes);
   const project = useProjectStore((s) => s.project);
+  const sendCursor = useCollabStore((s) => s.sendCursor);
+  const collabConnected = useCollabStore((s) => s.connected);
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance<AnyFlowNode> | null>(null);
   const [flowClickPos, setFlowClickPos] = useState<{ x: number; y: number } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -77,6 +82,15 @@ export function NodeCanvas() {
     setSelectedNodes(selectedNodes.map((n) => n.id));
   }, [setSelectedNodes]);
 
+  const onMouseMove = useCallback(
+    (event: React.MouseEvent) => {
+      if (!collabConnected || !rfInstance || !wrapperRef.current) return;
+      const flowPos = rfInstance.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      sendCursor(flowPos.x, flowPos.y, activeScene?.id ?? null);
+    },
+    [collabConnected, rfInstance, sendCursor, activeScene],
+  );
+
   if (!activeScene) {
     return (
       <div className="flex-1 flex items-center justify-center text-zinc-500 text-lg">
@@ -92,7 +106,7 @@ export function NodeCanvas() {
   );
 
   return (
-    <div ref={wrapperRef} className="flex-1 relative">
+    <div ref={wrapperRef} className="flex-1 relative" onMouseMove={onMouseMove}>
       {canvasHelpButton}
       <ReactFlow
         key={activeScene.id}
@@ -126,6 +140,8 @@ export function NodeCanvas() {
           }}
         />
       </ReactFlow>
+      <CollabCursors activeSceneId={activeScene.id} />
+      <CollabLocks />
       <ContextMenu flowPosition={flowClickPos} />
     </div>
   );

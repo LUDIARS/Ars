@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import type { Scene } from '@/types/domain';
+import { useCollabStore } from '@/stores/collabStore';
+import { useAuthStore } from '@/stores/authStore';
 
 interface SceneItemProps {
   scene: Scene;
@@ -14,6 +16,18 @@ export function SceneItem({ scene, isActive, onSelect, onRename, onDelete }: Sce
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(scene.name);
   const inputRef = useRef<HTMLInputElement>(null);
+  const locks = useCollabStore((s) => s.locks);
+  const users = useCollabStore((s) => s.users);
+  const requestLock = useCollabStore((s) => s.requestLock);
+  const releaseLock = useCollabStore((s) => s.releaseLock);
+  const connected = useCollabStore((s) => s.connected);
+  const currentUser = useAuthStore((s) => s.user);
+
+  const lockKey = `scene:${scene.id}`;
+  const lock = locks.get(lockKey);
+  const isLockedByOther = lock != null && lock.user_id !== currentUser?.id;
+  const isLockedByMe = lock != null && lock.user_id === currentUser?.id;
+  const lockOwner = lock ? users.get(lock.user_id) : null;
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -38,10 +52,18 @@ export function SceneItem({ scene, isActive, onSelect, onRename, onDelete }: Sce
         'group flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer text-sm transition-colors',
         isActive
           ? 'bg-blue-600 text-white'
-          : 'hover:bg-zinc-700 text-zinc-300',
+          : isLockedByOther
+            ? 'bg-zinc-800/50 text-zinc-500'
+            : 'hover:bg-zinc-700 text-zinc-300',
       )}
-      onClick={onSelect}
+      onClick={() => {
+        onSelect();
+        if (connected && currentUser && !isLockedByOther) {
+          requestLock(lockKey, scene.name);
+        }
+      }}
       onDoubleClick={() => {
+        if (isLockedByOther) return;
         setEditName(scene.name);
         setIsEditing(true);
       }}
@@ -65,6 +87,27 @@ export function SceneItem({ scene, isActive, onSelect, onRename, onDelete }: Sce
         />
       ) : (
         <span className="flex-1 truncate">{scene.name}</span>
+      )}
+      {isLockedByOther && lockOwner && (
+        <span
+          className="text-[10px] px-1 rounded"
+          style={{ backgroundColor: lockOwner.color, color: 'white' }}
+          title={`Locked by ${lock.display_name}`}
+        >
+          {lock.display_name}
+        </span>
+      )}
+      {isLockedByMe && connected && (
+        <button
+          className="text-[10px] text-green-400 opacity-60 hover:opacity-100 transition-opacity"
+          onClick={(e) => {
+            e.stopPropagation();
+            releaseLock(lockKey);
+          }}
+          title="Release lock"
+        >
+          🔓
+        </button>
       )}
       <button
         className={cn(

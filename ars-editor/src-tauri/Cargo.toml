@@ -34,6 +34,8 @@ web-server = [
     "dep:urlencoding",
     "dep:git2",
     "dep:dirs",
+    "dep:futures",
+    "dep:dashmap",
     "resource-depot/web-server",
     "data-organizer/web-server",
 ]
@@ -55,7 +57,7 @@ log = "0.4"
 tauri = { version = "2.10.3", optional = true }
 tauri-plugin-log = { version = "2", optional = true }
 dirs-next = "2.0"
-axum = { version = "0.7", optional = true }
+axum = { version = "0.7", features = ["ws"], optional = true }
 tokio = { version = "1", features = ["full"], optional = true }
 tower-http = { version = "0.5", features = ["cors", "fs"], optional = true }
 # OAuth & Auth
@@ -76,3 +78,6 @@ git2 = { version = "0.19", optional = true }
 resource-depot = { path = "../../resource-depot/src-tauri", default-features = false, optional = true }
 data-organizer = { path = "../../data-organizer", default-features = false, optional = true }
 dirs = { version = "6", optional = true }
+# Collaboration (WebSocket + shared state)
+futures = { version = "0.3", optional = true }
+dashmap = { version = "6", optional = true }
