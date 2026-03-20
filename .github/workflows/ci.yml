@@ -36,8 +36,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Build (TypeScript + Vite)
-        run: npm run build
+      - name: TypeScript
+        run: npx tsc -b
+
+      - name: Build (Vite)
+        run: npx vite build
 
   rust:
     name: Rust

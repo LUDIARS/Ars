@@ -5,7 +5,8 @@ Run the same CI lint/build checks locally before committing. Fix any errors foun
 1. **Frontend checks** (in `ars-editor/`):
    - Run `npm ci` if `node_modules` is missing
    - Run `npm run lint` (ESLint)
-   - Run `npm run build` (TypeScript + Vite build)
+   - Run `npx tsc -b` (TypeScript type check)
+   - Run `npm run build` (Vite build)
 
 2. **Rust checks** (in `ars-editor/src-tauri/`):
    - Run `cargo clippy --features web-server --no-default-features --bin ars-web-server -- -D warnings`
