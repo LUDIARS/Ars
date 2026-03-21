@@ -51,6 +51,24 @@ npx tauri dev
 
 ## ビルド
 
+### Docker
+
+```bash
+# --- GitHub Container Registry からイメージを取得して起動 ---
+# (privateリポジトリの場合は事前にログインが必要)
+# echo YOUR_GITHUB_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+docker compose up -d
+
+# --- ローカルでビルドして起動 ---
+docker compose up -d --build
+
+# または手動でビルド & 起動
+docker build -t ars .
+docker run -p 5173:5173 ars
+```
+
+`http://localhost:5173` でアクセスできます。
+
 ### デスクトップアプリ
 
 ```bash
