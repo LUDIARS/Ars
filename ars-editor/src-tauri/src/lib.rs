@@ -12,6 +12,8 @@ pub mod git_ops;
 pub mod web_server;
 #[cfg(feature = "web-server")]
 pub mod web_modules;
+#[cfg(feature = "web-server")]
+pub mod collab;
 
 #[cfg(feature = "tauri-app")]
 pub fn run() {
