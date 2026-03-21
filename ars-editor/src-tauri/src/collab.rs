@@ -99,16 +99,14 @@ impl Room {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct CollabState {
     rooms: Arc<DashMap<String, Arc<Room>>>,
 }
 
 impl CollabState {
     pub fn new() -> Self {
-        Self {
-            rooms: Arc::new(DashMap::new()),
-        }
+        Self::default()
     }
 
     fn get_or_create_room(&self, room_id: &str) -> Arc<Room> {
@@ -160,7 +158,7 @@ pub async fn ws_handler(
 
 /// WebSocketメッセージを送信するヘルパー
 async fn ws_send(tx: &mut SplitSink<WebSocket, Message>, text: &str) -> bool {
-    tx.send(Message::Text(text.to_string().into())).await.is_ok()
+    tx.send(Message::Text(text.to_string())).await.is_ok()
 }
 
 async fn handle_socket(socket: WebSocket, state: CollabState, query: WsQuery) {
@@ -210,11 +208,11 @@ async fn handle_socket(socket: WebSocket, state: CollabState, query: WsQuery) {
     let send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
             // 自分のカーソルメッセージは除外
-            if let Ok(parsed) = serde_json::from_str::<CollabMessage>(&msg) {
-                if let CollabMessage::Cursor { user_id: ref uid, .. } = parsed {
-                    if *uid == user_id_for_send {
-                        continue;
-                    }
+            if let Ok(CollabMessage::Cursor { user_id: ref uid, .. }) =
+                serde_json::from_str::<CollabMessage>(&msg)
+            {
+                if *uid == user_id_for_send {
+                    continue;
                 }
             }
             if !ws_send(&mut ws_tx, &msg).await {
