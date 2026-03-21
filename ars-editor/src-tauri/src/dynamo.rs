@@ -11,6 +11,7 @@ pub struct DynamoClient {
     users_table: String,
     sessions_table: String,
     projects_table: String,
+    project_settings_table: String,
 }
 
 impl DynamoClient {
@@ -25,6 +26,8 @@ impl DynamoClient {
                 .unwrap_or_else(|_| "ars-sessions".to_string()),
             projects_table: std::env::var("DYNAMODB_PROJECTS_TABLE")
                 .unwrap_or_else(|_| "ars-projects".to_string()),
+            project_settings_table: std::env::var("DYNAMODB_PROJECT_SETTINGS_TABLE")
+                .unwrap_or_else(|_| "ars-project-settings".to_string()),
         }
     }
 
@@ -245,6 +248,116 @@ impl DynamoClient {
             .send()
             .await
             .map_err(|e| format!("DynamoDB delete_project failed: {}", e))?;
+        Ok(())
+    }
+
+    // ========== Project Settings operations (KVS) ==========
+    // Key: projectId + settingKey → value (JSON string)
+
+    pub async fn put_project_setting(
+        &self,
+        project_id: &str,
+        key: &str,
+        value: &str,
+    ) -> Result<(), String> {
+        let now = chrono::Utc::now().to_rfc3339();
+        let mut item = HashMap::new();
+        item.insert("projectId".to_string(), AttributeValue::S(project_id.to_string()));
+        item.insert("settingKey".to_string(), AttributeValue::S(key.to_string()));
+        item.insert("value".to_string(), AttributeValue::S(value.to_string()));
+        item.insert("updatedAt".to_string(), AttributeValue::S(now));
+
+        self.client
+            .put_item()
+            .table_name(&self.project_settings_table)
+            .set_item(Some(item))
+            .send()
+            .await
+            .map_err(|e| format!("DynamoDB put_project_setting failed: {}", e))?;
+        Ok(())
+    }
+
+    pub async fn get_project_setting(
+        &self,
+        project_id: &str,
+        key: &str,
+    ) -> Result<Option<String>, String> {
+        let result = self.client
+            .get_item()
+            .table_name(&self.project_settings_table)
+            .key("projectId", AttributeValue::S(project_id.to_string()))
+            .key("settingKey", AttributeValue::S(key.to_string()))
+            .send()
+            .await
+            .map_err(|e| format!("DynamoDB get_project_setting failed: {}", e))?;
+
+        match result.item {
+            Some(item) => Ok(Some(get_s(&item, "value")?)),
+            None => Ok(None),
+        }
+    }
+
+    pub async fn get_all_project_settings(
+        &self,
+        project_id: &str,
+    ) -> Result<HashMap<String, String>, String> {
+        let result = self.client
+            .query()
+            .table_name(&self.project_settings_table)
+            .key_condition_expression("projectId = :pid")
+            .expression_attribute_values(":pid", AttributeValue::S(project_id.to_string()))
+            .send()
+            .await
+            .map_err(|e| format!("DynamoDB query project_settings failed: {}", e))?;
+
+        let mut settings = HashMap::new();
+        if let Some(items) = result.items {
+            for item in &items {
+                let key = get_s(item, "settingKey")?;
+                let value = get_s(item, "value")?;
+                settings.insert(key, value);
+            }
+        }
+        Ok(settings)
+    }
+
+    pub async fn put_project_settings_batch(
+        &self,
+        project_id: &str,
+        settings: &HashMap<String, String>,
+    ) -> Result<(), String> {
+        let now = chrono::Utc::now().to_rfc3339();
+        for (key, value) in settings {
+            let mut item = HashMap::new();
+            item.insert("projectId".to_string(), AttributeValue::S(project_id.to_string()));
+            item.insert("settingKey".to_string(), AttributeValue::S(key.clone()));
+            item.insert("value".to_string(), AttributeValue::S(value.clone()));
+            item.insert("updatedAt".to_string(), AttributeValue::S(now.clone()));
+
+            self.client
+                .put_item()
+                .table_name(&self.project_settings_table)
+                .set_item(Some(item))
+                .send()
+                .await
+                .map_err(|e| format!("DynamoDB put_project_settings_batch failed: {}", e))?;
+        }
+        Ok(())
+    }
+
+    pub async fn delete_project_setting(
+        &self,
+        project_id: &str,
+        key: &str,
+    ) -> Result<(), String> {
+        self.client
+            .delete_item()
+            .table_name(&self.project_settings_table)
+            .key("projectId", AttributeValue::S(project_id.to_string()))
+            .key("settingKey", AttributeValue::S(key.to_string()))
+            .send()
+            .await
+            .map_err(|e| format!("DynamoDB delete_project_setting failed: {}", e))?;
         Ok(())
     }
 }

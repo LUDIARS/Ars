@@ -19,9 +19,10 @@ pub async fn serve(port: u16, static_dir: Option<String>) -> Result<(), Box<dyn 
     let collab_state = CollabState::new();
 
     // 各モジュールのルーターを構築・マージ
-    let editor_router = web_modules::editor::router(state);
+    let editor_router = web_modules::editor::router(state.clone());
     let depot_router = web_modules::resource_depot::router();
     let data_router = web_modules::data_organizer::router();
+    let settings_router = web_modules::project_settings::router(state);
 
     // コラボレーションWebSocketルート
     let collab_router = Router::new()
@@ -31,6 +32,7 @@ pub async fn serve(port: u16, static_dir: Option<String>) -> Result<(), Box<dyn 
     let app = editor_router
         .merge(depot_router)
         .merge(data_router)
+        .merge(settings_router)
         .merge(collab_router)
         .layer(CorsLayer::permissive());
 
@@ -45,6 +47,7 @@ pub async fn serve(port: u16, static_dir: Option<String>) -> Result<(), Box<dyn 
     println!("  Editor:         /api/project/*, /api/cloud/*, /api/git/*");
     println!("  Resource Depot: /api/depot/*");
     println!("  Data Organizer: /api/data/*");
+    println!("  Settings:       /api/settings/*");
     println!("  Collaboration:  /ws/collab (WebSocket)");
 
     let listener = tokio::net::TcpListener::bind(addr).await

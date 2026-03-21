@@ -3,18 +3,20 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { EditorPage } from './features/editor-page';
 import { ResourceDepotPage } from './features/resource-depot';
 import { DataOrganizerPage } from './features/data-organizer';
+import { ProjectSettingsPage } from './features/project-settings';
 import { CollabPresence } from './features/node-editor/components/CollabPresence';
 import { useAuthStore } from './stores/authStore';
 import { useCollabStore } from './stores/collabStore';
 import { useProjectStore } from './stores/projectStore';
 import { isTauri } from './lib/backend';
 
-type Page = 'editor' | 'depot' | 'data';
+type Page = 'editor' | 'depot' | 'data' | 'settings';
 
 const NAV_ITEMS: { key: Page; label: string }[] = [
   { key: 'editor', label: 'Editor' },
   { key: 'depot', label: 'Resource Depot' },
   { key: 'data', label: 'Data Organizer' },
+  { key: 'settings', label: 'Settings' },
 ];
 
 function App() {
@@ -111,6 +113,7 @@ function App() {
         )}
         {page === 'depot' && <ResourceDepotPage />}
         {page === 'data' && <DataOrganizerPage />}
+        {page === 'settings' && <ProjectSettingsPage />}
       </div>
     </div>
   );
