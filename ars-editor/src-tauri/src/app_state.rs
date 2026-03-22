@@ -1,4 +1,3 @@
-use crate::dynamo::DynamoClient;
 use crate::surrealdb_client::SurrealClient;
 
 #[derive(Clone)]
@@ -6,14 +5,11 @@ pub struct AppState {
     pub github_client_id: String,
     pub github_client_secret: String,
     pub github_redirect_uri: String,
-    pub dynamo: DynamoClient,
     pub surreal: SurrealClient,
 }
 
 impl AppState {
     pub async fn from_env() -> Self {
-        let dynamo = DynamoClient::new().await;
-
         let surreal_data_dir = std::env::var("SURREALDB_DATA_DIR")
             .unwrap_or_else(|_| {
                 let base = dirs_next::data_dir()
@@ -33,7 +29,6 @@ impl AppState {
                 .expect("GITHUB_CLIENT_SECRET must be set"),
             github_redirect_uri: std::env::var("GITHUB_REDIRECT_URI")
                 .unwrap_or_else(|_| "http://localhost:5173/auth/github/callback".to_string()),
-            dynamo,
             surreal,
         }
     }

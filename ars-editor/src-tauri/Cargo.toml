@@ -28,8 +28,6 @@ web-server = [
     "dep:chrono",
     "dep:tower",
     "dep:axum-extra",
-    "dep:aws-config",
-    "dep:aws-sdk-dynamodb",
     "dep:time",
     "dep:urlencoding",
     "dep:git2",
@@ -70,9 +68,6 @@ tower = { version = "0.5", features = ["util"], optional = true }
 axum-extra = { version = "0.9", features = ["cookie"], optional = true }
 time = { version = "0.3", optional = true }
 urlencoding = { version = "2", optional = true }
-# AWS DynamoDB
-aws-config = { version = "1", optional = true }
-aws-sdk-dynamodb = { version = "1", optional = true }
 # Git operations
 git2 = { version = "0.19", optional = true }
 # Module crates
