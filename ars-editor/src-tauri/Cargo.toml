@@ -36,6 +36,7 @@ web-server = [
     "dep:dirs",
     "dep:futures",
     "dep:dashmap",
+    "dep:surrealdb",
     "resource-depot/web-server",
     "data-organizer/web-server",
 ]
@@ -81,3 +82,5 @@ dirs = { version = "6", optional = true }
 # Collaboration (WebSocket + shared state)
 futures = { version = "0.3", optional = true }
 dashmap = { version = "6", optional = true }
+# Local embedded database (SurrealDB)
+surrealdb = { version = "2", optional = true, features = ["kv-rocksdb"] }

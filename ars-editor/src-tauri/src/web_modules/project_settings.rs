@@ -1,6 +1,6 @@
 /// プロジェクト設定モジュール
 ///
-/// プロジェクトごとの設定をDynamoDB KVSで管理するAPIルートを提供する。
+/// プロジェクトごとの設定をSurrealDB（ローカル組み込みDB）で管理するAPIルートを提供する。
 /// 設定項目: 保存方法、参加ユーザ、Google Drive設定、resource-depot接続先など。
 use axum::{
     extract::{Path, State},
@@ -10,13 +10,13 @@ use axum::{
     Router,
 };
 use axum_extra::extract::cookie::CookieJar;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 
 use crate::app_state::AppState;
 use crate::auth;
 
-// ========== Request/Response types ==========
+// ========== Request types ==========
 
 #[derive(Deserialize)]
 struct PutSettingRequest {
@@ -26,12 +26,6 @@ struct PutSettingRequest {
 #[derive(Deserialize)]
 struct PutSettingsBatchRequest {
     settings: HashMap<String, String>,
-}
-
-#[derive(Serialize)]
-struct SettingEntry {
-    key: String,
-    value: String,
 }
 
 // ========== API handlers ==========
@@ -44,8 +38,8 @@ async fn api_get_all_settings(
 ) -> Result<Json<HashMap<String, String>>, (StatusCode, String)> {
     let _user = auth::extract_user(&state, &jar).await?;
     state
-        .dynamo
-        .get_all_project_settings(&project_id)
+        .surreal
+        .get_all_settings(&project_id)
         .await
         .map(Json)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
@@ -59,8 +53,8 @@ async fn api_get_setting(
 ) -> Result<Json<Option<String>>, (StatusCode, String)> {
     let _user = auth::extract_user(&state, &jar).await?;
     state
-        .dynamo
-        .get_project_setting(&project_id, &key)
+        .surreal
+        .get_setting(&project_id, &key)
         .await
         .map(Json)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
@@ -75,8 +69,8 @@ async fn api_put_setting(
 ) -> Result<Json<()>, (StatusCode, String)> {
     let _user = auth::extract_user(&state, &jar).await?;
     state
-        .dynamo
-        .put_project_setting(&project_id, &key, &req.value)
+        .surreal
+        .put_setting(&project_id, &key, &req.value)
         .await
         .map(Json)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
@@ -91,8 +85,8 @@ async fn api_put_settings_batch(
 ) -> Result<Json<()>, (StatusCode, String)> {
     let _user = auth::extract_user(&state, &jar).await?;
     state
-        .dynamo
-        .put_project_settings_batch(&project_id, &req.settings)
+        .surreal
+        .put_settings_batch(&project_id, &req.settings)
         .await
         .map(Json)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
@@ -106,8 +100,8 @@ async fn api_delete_setting(
 ) -> Result<Json<()>, (StatusCode, String)> {
     let _user = auth::extract_user(&state, &jar).await?;
     state
-        .dynamo
-        .delete_project_setting(&project_id, &key)
+        .surreal
+        .delete_setting(&project_id, &key)
         .await
         .map(|_| Json(()))
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
