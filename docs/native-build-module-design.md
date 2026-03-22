@@ -482,3 +482,346 @@ cargo tauri build --features "plugin-unity,plugin-pictor"
 ```
 
 シークレットは `~/.ars/secrets/<project-id>/secrets.toml` から自動読み込み。ビルド署名鍵はKeychain経由でアクセス。
+
+---
+
+## 4. Native Build 運用設計（ars-native）
+
+### 4.1 Phase A: ローカルビルド運用
+
+#### 前提
+
+- 対象: ars-native（Tauri Desktop）のみ
+- 配布先: 開発チーム内 or 自分自身
+- 署名: オプション（社内配布なら不要な場合も）
+
+#### ビルドコマンド体系
+
+```bash
+# 開発（ホットリロード）
+npm run tauri dev
+
+# デバッグビルド（署名なし、高速）
+npm run tauri build -- --debug
+
+# リリースビルド（最適化あり）
+npm run tauri build
+```
+
+#### 成果物マトリクス
+
+| OS | 形式 | パス | 用途 |
+|----|------|------|------|
+| Windows | `.msi` | `target/release/bundle/msi/` | 企業配布（GPO対応） |
+| Windows | `.exe` (NSIS) | `target/release/bundle/nsis/` | 個人インストール |
+| Linux | `.deb` | `target/release/bundle/deb/` | Debian/Ubuntu |
+| Linux | `.AppImage` | `target/release/bundle/appimage/` | ポータブル |
+| Linux | `.rpm` | `target/release/bundle/rpm/` | Fedora/RHEL（要追加設定） |
+
+#### tauri.conf.json の改善
+
+```jsonc
+{
+  "productName": "Ars Editor",
+  "version": "0.1.0",
+  "identifier": "dev.ludiars.ars-editor",  // ← com.tauri.dev から変更
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [/* ... */],
+    "resources": [],
+    "windows": {
+      "certificateThumbprint": null,       // Phase B で設定
+      "digestAlgorithm": "sha256",
+      "wix": {
+        "language": ["ja-JP", "en-US"]
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0"
+        ],
+        "section": "devel",
+        "priority": "optional"
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": false,                     // Phase B で有効化
+      "pubkey": "",
+      "endpoints": []
+    }
+  }
+}
+```
+
+#### ローカルビルド時のシークレット解決フロー
+
+```
+npx tauri build
+    │
+    ▼
+[Rust build.rs / ランタイム初期化]
+    │
+    ├── ~/.ars/config.toml からプロジェクトID特定
+    │
+    ├── ~/.ars/secrets/<project-id>/env.toml 読み込み
+    │   └── 非機密設定（APIエンドポイントURL、ポート等）
+    │
+    ├── ~/.ars/secrets/<project-id>/secrets.toml 読み込み
+    │   └── 機密値（API鍵、署名パスワード等）
+    │        └── "keychain:xxx" → OS Keychain で解決
+    │
+    └── 環境変数でオーバーライド可能
+        └── ARS_SECRET_<SECTION>_<KEY>=value
+```
+
+**重要**: ビルド時に機密値をバイナリに埋め込まない。ランタイムで `~/.ars/` から読み込む。
+
+#### プロジェクトとビルドの紐付け
+
+```toml
+# <project-dir>/ars-project.toml（プロジェクトルートに配置、Git管理対象）
+[project]
+id = "my-game-project"
+name = "My Game"
+
+[build]
+platform = "ars-native"
+
+[build.targets]
+windows = { enabled = true, arch = "x86_64" }
+linux = { enabled = true, arch = "x86_64" }
+```
+
+```toml
+# ~/.ars/secrets/my-game-project/env.toml（ローカルのみ、Git管理外）
+[paths]
+resource_depot = "/home/user/assets/my-game"
+data_organizer_url = "http://localhost:5175"
+
+[build]
+parallel_jobs = 8
+```
+
+---
+
+### 4.2 Phase B: CI/CD Native Build
+
+#### GitHub Actions ワークフロー
+
+```yaml
+# .github/workflows/native-build.yml
+name: Native Build
+
+on:
+  push:
+    tags:
+      - 'v*'          # タグプッシュでリリースビルド
+  workflow_dispatch:    # 手動トリガーも可能
+    inputs:
+      target:
+        description: 'Build target'
+        type: choice
+        options:
+          - all
+          - windows
+          - linux
+
+permissions:
+  contents: write      # GitHub Releases へのアップロード
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundle: "msi,nsis"
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundle: "deb,appimage"
+
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: ars-editor/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ars-editor/src-tauri -> target
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+            librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        working-directory: ars-editor
+        run: npm ci
+
+      - name: Build (Tauri)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Windows コード署名（オプション）
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: ars-editor
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Ars Editor ${{ github.ref_name }}'
+          releaseBody: 'Native build for ${{ github.ref_name }}'
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.target }}
+```
+
+#### CI用シークレット（GitHub Actions Secrets）
+
+| Secret名 | 用途 | 必須 |
+|-----------|------|------|
+| `TAURI_SIGNING_PRIVATE_KEY` | Tauri Updater署名鍵 | Updater有効時 |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | 署名鍵パスワード | 同上 |
+| `WINDOWS_CERTIFICATE` | Windows Authenticode証明書 (Base64) | 配布時 |
+| `WINDOWS_CERTIFICATE_PASSWORD` | 証明書パスワード | 同上 |
+
+#### リリースフロー
+
+```
+feature branch → PR → main merge
+                          │
+                     tag v0.2.0 push
+                          │
+                ┌─────────┼─────────┐
+                ▼                   ▼
+         windows-latest       ubuntu-22.04
+         (MSI + NSIS)         (deb + AppImage)
+                │                   │
+                └─────────┬─────────┘
+                          ▼
+                  GitHub Release (Draft)
+                          │
+                     手動で Publish
+                          │
+                  Tauri Updater JSON 更新
+                  (→ アプリ内自動更新通知)
+```
+
+#### Tauri Updater 設定（Phase B後半）
+
+```jsonc
+// tauri.conf.json
+{
+  "plugins": {
+    "updater": {
+      "active": true,
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ...",
+      "endpoints": [
+        "https://github.com/LUDIARS/Ars/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}
+```
+
+GitHub Releases にアップロードされる `latest.json` の例:
+
+```json
+{
+  "version": "0.2.0",
+  "notes": "Bug fixes and performance improvements",
+  "pub_date": "2026-03-22T00:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "...",
+      "url": "https://github.com/LUDIARS/Ars/releases/download/v0.2.0/Ars-Editor_0.2.0_x64-setup.nsis.zip"
+    },
+    "linux-x86_64": {
+      "signature": "...",
+      "url": "https://github.com/LUDIARS/Ars/releases/download/v0.2.0/Ars-Editor_0.2.0_amd64.AppImage.tar.gz"
+    }
+  }
+}
+```
+
+---
+
+### 4.3 バージョニング戦略
+
+```
+v<major>.<minor>.<patch>[-<pre>]
+
+例:
+  v0.1.0        初回リリース
+  v0.2.0-beta   Phase B テスト
+  v0.2.0        Phase B 正式
+  v1.0.0        モジュール分離完了後の安定版
+```
+
+バージョンの変更箇所:
+- `ars-editor/src-tauri/tauri.conf.json` → `version`
+- `ars-editor/package.json` → `version`
+- 各 `Cargo.toml` → `version`（workspace版で統一）
+
+自動化: `cargo-release` または Tauri の `before-build` hook でバージョン同期。
+
+---
+
+### 4.4 モジュール分離との関係
+
+| Phase | モジュール状態 | Native Build への影響 |
+|-------|--------------|---------------------|
+| 現状 | monolith（feature gate） | ビルドは単純だが、全依存が入る |
+| Module Phase 1 | `ars-core` 分離 | ビルドは変わらない。crate分離のみ |
+| Module Phase 2 | 機能crate分離 | **Cargo workspace化が必要**。CI設定更新 |
+| Module Phase 3 | Plugin化 | feature flagでPlugin選択。CI matrix拡張 |
+| Module Phase 4 | App層スリム化 | ars-editor のビルド時間短縮。web-server独立 |
+
+**注意**: Module Phase 2 でCargo workspaceに移行する際、CI/CDのワークフローとrust-cache設定を同時に更新する必要がある。
+
+---
+
+### 4.5 まとめ: ロードマップ
+
+```
+現在
+ │  Phase A-1: tauri.conf.json修正（identifier, bundle設定）
+ │  Phase A-2: ars-secrets crate新設 + ~/.ars/ ディレクトリ構造
+ │  Phase A-3: ローカルビルドの手順ドキュメント整備
+ │
+ ▼
+Module Phase 1-2（crate分離）
+ │  Phase B-1: CI workflow追加（native-build.yml）
+ │  Phase B-2: tauri-action でWindows/Linuxビルド自動化
+ │  Phase B-3: GitHub Releases へのアーティファクト自動アップロード
+ │
+ ▼
+Module Phase 3（Plugin化）
+ │  Phase B-4: コード署名設定（Windows Authenticode）
+ │  Phase B-5: Tauri Updater有効化（アプリ内自動更新）
+ │
+ ▼
+安定版 v1.0.0
+```
