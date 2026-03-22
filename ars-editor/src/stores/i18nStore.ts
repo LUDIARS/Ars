@@ -3,18 +3,25 @@ import { persist } from 'zustand/middleware';
 
 export type SupportedLocale = 'en' | 'ja';
 
-/** Nested translation dictionary – values are either strings or nested objects */
+/** Nested translation dictionary – values are strings, string arrays, or nested objects */
 export type TranslationDict = {
-  [key: string]: string | TranslationDict;
+  [key: string]: string | string[] | TranslationDict;
 };
 
 /** Resolve a dot-separated key from a nested dictionary */
 function resolve(dict: TranslationDict, key: string): string | undefined {
   const parts = key.split('.');
-  let cur: TranslationDict | string = dict;
+  let cur: TranslationDict | string | string[] = dict;
   for (const p of parts) {
-    if (typeof cur === 'string' || cur == null) return undefined;
-    cur = cur[p] as TranslationDict | string;
+    if (cur == null) return undefined;
+    if (Array.isArray(cur)) {
+      const idx = Number(p);
+      if (Number.isNaN(idx)) return undefined;
+      const val = cur[idx];
+      return typeof val === 'string' ? val : undefined;
+    }
+    if (typeof cur === 'string') return undefined;
+    cur = cur[p] as TranslationDict | string | string[];
   }
   return typeof cur === 'string' ? cur : undefined;
 }
