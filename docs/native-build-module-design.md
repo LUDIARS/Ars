@@ -825,3 +825,298 @@ Module Phase 3（Plugin化）
  ▼
 安定版 v1.0.0
 ```
+
+---
+
+## 5. 永続化バックエンドの抽象化（Repository層）
+
+### 5.1 現状の問題
+
+```
+tauri-app (ネイティブ)              web-server (Docker/Web)
+──────────────────────              ────────────────────────
+Project:  ローカルJSON               Project:  DynamoDB
+Auth:     なし                       Auth:     GitHub OAuth + DynamoDB
+User:     なし (シングルユーザー)     User:     DynamoDB (マルチユーザー)
+Settings: なし                       Settings: 環境変数のみ
+```
+
+- ネイティブビルドにもプロジェクト設定・ユーザー設定・アセンブリ構成の永続化が必要
+- しかしDynamoDBを必須にするとローカル開発が面倒になる
+- web-server側は既にDynamoDBに依存している
+- **同一のアプリケーションロジックに対して、永続化バックエンドを差し替え可能にする必要がある**
+
+### 5.2 Repository trait パターン
+
+```rust
+// crates/ars-core/src/repository.rs
+
+/// プロジェクト永続化の抽象
+#[async_trait::async_trait]
+pub trait ProjectRepository: Send + Sync {
+    async fn save(&self, user_id: &str, project_id: &str, project: &Project) -> Result<()>;
+    async fn load(&self, user_id: &str, project_id: &str) -> Result<Option<Project>>;
+    async fn list(&self, user_id: &str) -> Result<Vec<ProjectSummary>>;
+    async fn delete(&self, user_id: &str, project_id: &str) -> Result<()>;
+}
+
+/// ユーザー永続化の抽象
+#[async_trait::async_trait]
+pub trait UserRepository: Send + Sync {
+    async fn put_user(&self, user: &User) -> Result<()>;
+    async fn get_user(&self, user_id: &str) -> Result<Option<User>>;
+    async fn get_user_by_provider_id(&self, provider: &str, id: &str) -> Result<Option<User>>;
+}
+
+/// セッション永続化の抽象
+#[async_trait::async_trait]
+pub trait SessionRepository: Send + Sync {
+    async fn put_session(&self, session: &Session) -> Result<()>;
+    async fn get_session(&self, session_id: &str) -> Result<Option<Session>>;
+    async fn delete_session(&self, session_id: &str) -> Result<()>;
+}
+
+/// アセンブリ設定の永続化
+#[async_trait::async_trait]
+pub trait AssemblyConfigRepository: Send + Sync {
+    async fn save(&self, project_id: &str, config: &ProjectAssemblyConfig) -> Result<()>;
+    async fn load(&self, project_id: &str) -> Result<Option<ProjectAssemblyConfig>>;
+}
+```
+
+### 5.3 実装: ネイティブ用（ローカルファイル）
+
+```rust
+// crates/ars-project/src/local_repo.rs
+
+/// ローカルファイルシステムベースの実装
+/// ~/.ars/projects/<project-id>/ にJSON保存
+pub struct LocalProjectRepository {
+    base_dir: PathBuf,  // ~/.ars/projects/
+}
+
+#[async_trait::async_trait]
+impl ProjectRepository for LocalProjectRepository {
+    async fn save(&self, _user_id: &str, project_id: &str, project: &Project) -> Result<()> {
+        let path = self.base_dir.join(project_id).join("project.json");
+        fs::create_dir_all(path.parent().unwrap())?;
+        let json = serde_json::to_string_pretty(project)?;
+        fs::write(&path, json)?;
+        Ok(())
+    }
+
+    async fn load(&self, _user_id: &str, project_id: &str) -> Result<Option<Project>> {
+        let path = self.base_dir.join(project_id).join("project.json");
+        if !path.exists() { return Ok(None); }
+        let content = fs::read_to_string(&path)?;
+        Ok(Some(serde_json::from_str(&content)?))
+    }
+
+    // ...
+}
+
+/// ネイティブはシングルユーザー。固定IDで返す。
+pub struct LocalUserRepository {
+    config_path: PathBuf,  // ~/.ars/user.toml
+}
+
+#[async_trait::async_trait]
+impl UserRepository for LocalUserRepository {
+    async fn get_user(&self, _user_id: &str) -> Result<Option<User>> {
+        // ローカルの user.toml から読み取り
+        // GitHub連携していれば GitHub 情報、なければローカルユーザー
+        todo!()
+    }
+    // ...
+}
+
+/// ネイティブはセッション不要だが、GitHub token管理に使う
+pub struct LocalSessionRepository {
+    keychain: KeychainService,
+}
+```
+
+### 5.4 実装: Web用（DynamoDB）
+
+```rust
+// crates/ars-auth/src/dynamo_repo.rs
+
+/// 既存の DynamoClient をラップ
+pub struct DynamoProjectRepository {
+    client: DynamoClient,
+}
+
+#[async_trait::async_trait]
+impl ProjectRepository for DynamoProjectRepository {
+    async fn save(&self, user_id: &str, project_id: &str, project: &Project) -> Result<()> {
+        self.client.save_project(user_id, project_id, project).await
+    }
+    // ... 既存のdynamo.rsの実装をそのまま委譲
+}
+```
+
+### 5.5 DI（依存注入）の配線
+
+```rust
+// apps/ars-editor/src-tauri/src/main.rs (ネイティブ)
+
+fn main() {
+    let base_dir = dirs::home_dir().unwrap().join(".ars");
+
+    // ネイティブ: ローカルファイル実装を注入
+    let project_repo: Arc<dyn ProjectRepository> =
+        Arc::new(LocalProjectRepository::new(base_dir.join("projects")));
+    let user_repo: Arc<dyn UserRepository> =
+        Arc::new(LocalUserRepository::new(base_dir.join("user.toml")));
+    let assembly_repo: Arc<dyn AssemblyConfigRepository> =
+        Arc::new(LocalAssemblyConfigRepository::new(base_dir.join("assemblies")));
+
+    tauri::Builder::default()
+        .manage(project_repo)
+        .manage(user_repo)
+        .manage(assembly_repo)
+        .invoke_handler(tauri::generate_handler![/* ... */])
+        .run(tauri::generate_context!())
+        .expect("error");
+}
+```
+
+```rust
+// apps/ars-web-server/src/main.rs (Web)
+
+#[tokio::main]
+async fn main() {
+    // Web: DynamoDB実装を注入
+    let dynamo = DynamoClient::new().await;
+    let project_repo: Arc<dyn ProjectRepository> =
+        Arc::new(DynamoProjectRepository::new(dynamo.clone()));
+    let user_repo: Arc<dyn UserRepository> =
+        Arc::new(DynamoUserRepository::new(dynamo.clone()));
+
+    let state = AppState { project_repo, user_repo, /* ... */ };
+    // ...
+}
+```
+
+### 5.6 Tauri Command / Axum Handler の共通化
+
+```rust
+// crates/ars-project/src/use_cases.rs
+//
+// ユースケース層: Repository trait に依存。具体実装を知らない。
+
+pub async fn save_project(
+    repo: &dyn ProjectRepository,
+    user_id: &str,
+    project_id: &str,
+    project: &Project,
+) -> Result<()> {
+    // バリデーション、ビジネスルール
+    if project.name.is_empty() {
+        return Err(anyhow!("Project name is required"));
+    }
+    repo.save(user_id, project_id, project).await
+}
+```
+
+```rust
+// apps/ars-editor/src-tauri/src/commands.rs (Tauri側 - 薄いグルー)
+
+#[tauri::command]
+async fn save_project(
+    repo: State<'_, Arc<dyn ProjectRepository>>,
+    project_id: String,
+    project: Project,
+) -> Result<(), String> {
+    let user_id = "local";  // ネイティブはシングルユーザー
+    ars_project::use_cases::save_project(repo.as_ref(), user_id, &project_id, &project)
+        .await
+        .map_err(|e| e.to_string())
+}
+```
+
+```rust
+// apps/ars-web-server/src/handlers.rs (Axum側 - 薄いグルー)
+
+async fn api_save_project(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    Json(req): Json<SaveRequest>,
+) -> Result<Json<()>, (StatusCode, String)> {
+    let user = auth::extract_user(&state, &jar).await?;
+    ars_project::use_cases::save_project(
+        state.project_repo.as_ref(), &user.id, &req.project_id, &req.project
+    )
+    .await
+    .map(Json)
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+}
+```
+
+### 5.7 レイヤー構成図
+
+```
+┌───────────────────────────────────────────────────────────┐
+│ Transport (薄いグルー)                                     │
+│  ├─ Tauri Command   → user_id = "local"                  │
+│  └─ Axum Handler    → user_id = auth::extract_user()     │
+├───────────────────────────────────────────────────────────┤
+│ Use Case (crates/ars-project/src/use_cases.rs)            │
+│  └─ ビジネスロジック、バリデーション                         │
+│     引数: &dyn ProjectRepository                          │
+├───────────────────────────────────────────────────────────┤
+│ Repository trait (crates/ars-core/src/repository.rs)      │
+│  └─ async fn save / load / list / delete                  │
+├──────────────────┬────────────────────────────────────────┤
+│ LocalRepo        │  DynamoRepo                            │
+│ (ars-project)    │  (ars-auth)                            │
+│ ~/.ars/ JSON     │  AWS DynamoDB                          │
+│ + Keychain       │  + 環境変数                             │
+└──────────────────┴────────────────────────────────────────┘
+```
+
+### 5.8 ネイティブ固有: ~/.ars/ ディレクトリ構造（更新）
+
+```
+~/.ars/
+├── config.toml                        # グローバル設定
+├── user.toml                          # ローカルユーザー情報
+├── projects/
+│   ├── <project-id>/
+│   │   ├── project.json               # ≒ DynamoDB の projects テーブル
+│   │   └── assembly.config.json       # ≒ 現 assembly.config.json
+│   └── ...
+├── secrets/
+│   ├── <project-id>/
+│   │   ├── secrets.toml               # 機密値
+│   │   └── env.toml                   # 非機密ローカル設定
+│   └── global/
+│       └── secrets.toml               # 共通機密値
+├── module-cache/                      # モジュールレジストリキャッシュ
+└── resource-depot/
+    └── depot.json                     # 既存
+```
+
+### 5.9 移行パス: 既存コードからの変換
+
+| 現在のファイル | 変換先 | 作業内容 |
+|-------------|--------|---------|
+| `dynamo.rs` (DynamoClient) | `ars-auth/src/dynamo_repo.rs` | Repository trait 実装でラップ |
+| `commands/project.rs` (ファイルI/O) | `ars-project/src/local_repo.rs` | Repository trait 実装でラップ |
+| `commands/project.rs` (use case) | `ars-project/src/use_cases.rs` | トランスポート非依存のユースケース抽出 |
+| `app_state.rs` (AppState) | 各アプリのエントリポイント | DI配線のみ |
+| `auth.rs` (OAuth) | `ars-auth/src/oauth.rs` | web-server専用のまま。ネイティブは不要 |
+| `assembly_manager.rs` | `ars-assembly/src/` | AssemblyConfigRepository経由に |
+
+### 5.10 ネイティブで不要なもの / Web専用のもの
+
+| 機能 | ネイティブ | Web | 理由 |
+|------|----------|-----|------|
+| GitHub OAuth | 不要 | 必須 | ネイティブはOS Keychainでトークン管理 |
+| DynamoDB | 不要 | 必須 | ネイティブはローカルJSON |
+| Session管理 | 不要 | 必須 | シングルユーザー |
+| CORS設定 | 不要 | 必須 | 同一プロセス |
+| WebSocket Collab | 将来対応 | 対応済み | ネイティブ同士の同期は別途検討 |
+| Git操作 | 対応 | 対応 | 両方で使う（`ars-git` crate共通） |
+
+これらは feature flag ではなく **バイナリレベルで分離** する（ars-editor と ars-web-server が別バイナリ）。
