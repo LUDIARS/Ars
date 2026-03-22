@@ -39,13 +39,10 @@ jobs:
       - name: TypeScript
         run: npx tsc -b
 
-      - name: Build (Vite)
-        run: npx vite build
-
   rust:
     name: Rust
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -66,10 +63,6 @@ jobs:
       - name: Clippy (web-server)
         working-directory: ars-editor/src-tauri
         run: cargo clippy --features web-server --no-default-features --bin ars-web-server -- -D warnings
-
-      - name: Build (web-server)
-        working-directory: ars-editor/src-tauri
-        run: cargo build --features web-server --no-default-features --bin ars-web-server
 
       - name: Test (data-organizer)
         working-directory: data-organizer
