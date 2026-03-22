@@ -7,6 +7,8 @@ pub mod auth;
 #[cfg(feature = "web-server")]
 pub mod dynamo;
 #[cfg(feature = "web-server")]
+pub mod dynamo_repo;
+#[cfg(feature = "web-server")]
 pub mod git_ops;
 #[cfg(feature = "web-server")]
 pub mod web_server;
@@ -17,6 +19,23 @@ pub mod collab;
 
 #[cfg(feature = "tauri-app")]
 pub fn run() {
+    use std::sync::Arc;
+    use ars_core::repository::{ProjectRepository, SessionRepository, UserRepository};
+
+    // ローカルファイルベースのRepository実装を注入
+    let project_repo: Arc<dyn ProjectRepository> = Arc::new(
+        ars_project::LocalProjectRepository::with_defaults()
+            .expect("Failed to initialize project repository"),
+    );
+    let user_repo: Arc<dyn UserRepository> = Arc::new(
+        ars_project::LocalUserRepository::with_defaults()
+            .expect("Failed to initialize user repository"),
+    );
+    let session_repo: Arc<dyn SessionRepository> = Arc::new(
+        ars_project::LocalSessionRepository::with_defaults()
+            .expect("Failed to initialize session repository"),
+    );
+
     tauri::Builder::default()
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -28,6 +47,9 @@ pub fn run() {
             }
             Ok(())
         })
+        .manage(project_repo)
+        .manage(user_repo)
+        .manage(session_repo)
         .invoke_handler(tauri::generate_handler![
             commands::save_project,
             commands::load_project,
