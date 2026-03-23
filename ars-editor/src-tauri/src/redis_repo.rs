@@ -1,6 +1,7 @@
 /// Redis を使った SessionRepository trait 実装
 ///
 /// RedisClient をラップし、ars-core の SessionRepository に適合させる。
+/// crate::models::Session は ars_core::models::Session の再エクスポートなので同一型。
 use async_trait::async_trait;
 
 use ars_core::error::{ArsError, Result};
@@ -22,19 +23,17 @@ impl RedisSessionRepository {
 #[async_trait]
 impl SessionRepository for RedisSessionRepository {
     async fn put(&self, session: &core_models::Session) -> Result<()> {
-        let local_session = to_local_session(session);
         self.client
-            .put_session(&local_session)
+            .put_session(session)
             .await
             .map_err(ArsError::Storage)
     }
 
     async fn get(&self, session_id: &str) -> Result<Option<core_models::Session>> {
-        let result = self.client
+        self.client
             .get_session(session_id)
             .await
-            .map_err(ArsError::Storage)?;
-        Ok(result.map(|s| to_core_session(&s)))
+            .map_err(ArsError::Storage)
     }
 
     async fn delete(&self, session_id: &str) -> Result<()> {
@@ -48,31 +47,5 @@ impl SessionRepository for RedisSessionRepository {
         // Webモードでは cookie からセッションIDを取るため、
         // この関数は使われない。get() を使う。
         Ok(None)
-    }
-}
-
-// ── 型変換ヘルパー ──────────────────────────────────
-
-fn to_local_session(s: &core_models::Session) -> crate::auth::Session {
-    crate::auth::Session {
-        id: s.id.clone(),
-        user_id: s.user_id.clone(),
-        expires_at: s.expires_at.clone().unwrap_or_default(),
-        created_at: s.created_at.clone(),
-        access_token: s.access_token.clone(),
-    }
-}
-
-fn to_core_session(s: &crate::auth::Session) -> core_models::Session {
-    core_models::Session {
-        id: s.id.clone(),
-        user_id: s.user_id.clone(),
-        expires_at: if s.expires_at.is_empty() {
-            None
-        } else {
-            Some(s.expires_at.clone())
-        },
-        created_at: s.created_at.clone(),
-        access_token: s.access_token.clone(),
     }
 }

@@ -1,0 +1,17 @@
+[package]
+name = "ars-codegen"
+version = "0.1.0"
+edition = "2021"
+description = "Ars Code Generator - Generate game content code from Ars design flow using Claude Code"
+
+[[bin]]
+name = "ars-codegen"
+path = "src/main.rs"
+
+[dependencies]
+ars-core = { path = "../ars-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+clap = { workspace = true }
+uuid = { workspace = true }
+tokio = { version = "1", features = ["process", "fs", "rt-multi-thread", "macros"] }

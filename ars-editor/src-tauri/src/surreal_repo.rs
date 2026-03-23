@@ -114,6 +114,7 @@ fn to_local_project(p: &core_models::Project) -> crate::models::Project {
         name: p.name.clone(),
         scenes: p.scenes.iter().map(|(k, s)| (k.clone(), to_local_scene(s))).collect(),
         components: p.components.iter().map(|(k, c)| (k.clone(), to_local_component(c))).collect(),
+        prefabs: p.prefabs.clone(),
         active_scene_id: p.active_scene_id.clone(),
     }
 }
@@ -123,6 +124,7 @@ fn to_core_project(p: &crate::models::Project) -> core_models::Project {
         name: p.name.clone(),
         scenes: p.scenes.iter().map(|(k, s)| (k.clone(), to_core_scene(s))).collect(),
         components: p.components.iter().map(|(k, c)| (k.clone(), to_core_component(c))).collect(),
+        prefabs: p.prefabs.clone(),
         active_scene_id: p.active_scene_id.clone(),
     }
 }
@@ -190,6 +192,9 @@ fn to_local_actor(a: &core_models::Actor) -> crate::models::Actor {
         children: a.children.clone(),
         position: crate::models::Position { x: a.position.x, y: a.position.y },
         parent_id: a.parent_id.clone(),
+        sequences: a.sequences.clone(),
+        sub_scene_id: a.sub_scene_id.clone(),
+        prefab_id: a.prefab_id.clone(),
     }
 }
 
@@ -202,6 +207,9 @@ fn to_core_actor(a: &crate::models::Actor) -> core_models::Actor {
         children: a.children.clone(),
         position: core_models::Position { x: a.position.x, y: a.position.y },
         parent_id: a.parent_id.clone(),
+        sequences: a.sequences.clone(),
+        sub_scene_id: a.sub_scene_id.clone(),
+        prefab_id: a.prefab_id.clone(),
     }
 }
 
@@ -230,6 +238,7 @@ fn to_local_component(c: &core_models::Component) -> crate::models::Component {
             test_cases: t.test_cases.clone(),
         }).collect(),
         dependencies: c.dependencies.clone(),
+        source_module_id: c.source_module_id.clone(),
     }
 }
 
@@ -258,13 +267,14 @@ fn to_core_component(c: &crate::models::Component) -> core_models::Component {
             test_cases: t.test_cases.clone(),
         }).collect(),
         dependencies: c.dependencies.clone(),
+        source_module_id: c.source_module_id.clone(),
     }
 }
 
-fn to_local_user(u: &core_models::User) -> crate::auth::User {
-    crate::auth::User {
+fn to_local_user(u: &core_models::User) -> crate::models::User {
+    crate::models::User {
         id: u.id.clone(),
-        github_id: u.provider_id.parse().unwrap_or(0),
+        github_id: u.github_id,
         login: u.login.clone(),
         display_name: u.display_name.clone(),
         avatar_url: u.avatar_url.clone(),
@@ -274,11 +284,10 @@ fn to_local_user(u: &core_models::User) -> crate::auth::User {
     }
 }
 
-fn to_core_user(u: &crate::auth::User) -> core_models::User {
+fn to_core_user(u: &crate::models::User) -> core_models::User {
     core_models::User {
         id: u.id.clone(),
-        provider_id: u.github_id.to_string(),
-        provider: "github".to_string(),
+        github_id: u.github_id,
         login: u.login.clone(),
         display_name: u.display_name.clone(),
         avatar_url: u.avatar_url.clone(),

@@ -4,7 +4,7 @@
 use redis::aio::ConnectionManager;
 use redis::AsyncCommands;
 
-use crate::auth::Session;
+use ars_core::models::Session;
 
 const SESSION_PREFIX: &str = "session:";
 const SESSION_TTL_SECS: u64 = 7 * 24 * 60 * 60; // 7 days

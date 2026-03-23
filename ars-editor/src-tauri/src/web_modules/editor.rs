@@ -18,7 +18,7 @@ use crate::commands::project::{
     get_default_project_path_impl, list_projects_impl, load_project_impl, save_project_impl,
 };
 use crate::git_ops;
-use crate::models::Project;
+use crate::models::{GitProjectInfo, GitRepo, Project};
 
 // ========== Local file-based APIs ==========
 
@@ -108,7 +108,7 @@ async fn api_cloud_load_project(
 async fn api_cloud_list_projects(
     State(state): State<AppState>,
     jar: CookieJar,
-) -> Result<Json<Vec<crate::surrealdb_client::ProjectSummary>>, (StatusCode, String)> {
+) -> Result<Json<Vec<crate::models::ProjectSummary>>, (StatusCode, String)> {
     let user = auth::extract_user(&state, &jar).await?;
     state
         .surreal
@@ -137,7 +137,7 @@ async fn api_cloud_delete_project(
 async fn api_git_list_repos(
     State(state): State<AppState>,
     jar: CookieJar,
-) -> Result<Json<Vec<git_ops::GitRepo>>, (StatusCode, String)> {
+) -> Result<Json<Vec<GitRepo>>, (StatusCode, String)> {
     let session = auth::extract_session(&state, &jar).await?;
     let repos = git_ops::list_repos(&session.access_token)
         .await
@@ -156,7 +156,7 @@ async fn api_git_create_repo(
     State(state): State<AppState>,
     jar: CookieJar,
     Json(req): Json<CreateRepoRequest>,
-) -> Result<Json<git_ops::GitRepo>, (StatusCode, String)> {
+) -> Result<Json<GitRepo>, (StatusCode, String)> {
     let session = auth::extract_session(&state, &jar).await?;
     let repo = git_ops::create_repo(
         &session.access_token,
@@ -181,7 +181,7 @@ async fn api_git_clone(
     State(state): State<AppState>,
     jar: CookieJar,
     Json(req): Json<CloneRequest>,
-) -> Result<Json<git_ops::GitProjectInfo>, (StatusCode, String)> {
+) -> Result<Json<GitProjectInfo>, (StatusCode, String)> {
     let session = auth::extract_session(&state, &jar).await?;
     let token = session.access_token.clone();
     let clone_url = req.clone_url.clone();
@@ -196,7 +196,7 @@ async fn api_git_clone(
 
     let has_project = result.join("project.json").exists();
 
-    Ok(Json(git_ops::GitProjectInfo {
+    Ok(Json(GitProjectInfo {
         repo_full_name: req.full_name,
         branch: "main".to_string(),
         has_project,
@@ -257,7 +257,7 @@ async fn api_git_push(
 async fn api_git_list_local_projects(
     State(state): State<AppState>,
     jar: CookieJar,
-) -> Result<Json<Vec<git_ops::GitProjectInfo>>, (StatusCode, String)> {
+) -> Result<Json<Vec<GitProjectInfo>>, (StatusCode, String)> {
     let _session = auth::extract_session(&state, &jar).await?;
 
     let projects = tokio::task::spawn_blocking(git_ops::list_local_projects)
