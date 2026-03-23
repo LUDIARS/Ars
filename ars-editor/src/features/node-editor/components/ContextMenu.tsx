@@ -39,6 +39,7 @@ export function ContextMenu({ flowPosition }: ContextMenuProps) {
         components: [],
         children: [],
         position: flowPosition,
+        parentId: null,
         sequences: [],
         subSceneId: null,
         prefabId: null,

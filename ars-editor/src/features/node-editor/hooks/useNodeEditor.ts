@@ -3,6 +3,7 @@ import type { Connection as FlowConnection, NodeChange, EdgeChange } from '@xyfl
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import { useProjectStore } from '@/stores/projectStore';
 import type { AnyFlowNode, FlowEdge, ActorNodeData } from '../types/nodes';
+import type { ActorRole } from '@/types/domain';
 
 export function useNodeEditor() {
   const project = useProjectStore((s) => s.project);
@@ -24,7 +25,7 @@ export function useNodeEditor() {
       data: {
         actorId: actor.id,
         name: actor.name,
-        role: actor.role,
+        role: actor.role as ActorRole,
         componentIds: actor.components,
         isRoot: actor.id === activeScene.rootActorId,
       } satisfies ActorNodeData,

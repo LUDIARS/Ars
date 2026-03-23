@@ -1,32 +1,10 @@
 use git2::{Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository, Signature};
-use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use crate::models::Project;
+use ars_core::models::{GitProjectInfo, GitRepo, Project};
 
 const PROJECTS_DIR: &str = "ars-projects";
 const PROJECT_FILE: &str = "project.json";
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GitRepo {
-    pub name: String,
-    pub full_name: String,
-    pub description: Option<String>,
-    pub html_url: String,
-    pub clone_url: String,
-    #[serde(rename = "private")]
-    pub is_private: bool,
-    #[serde(rename = "updated_at")]
-    pub updated_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GitProjectInfo {
-    pub repo_full_name: String,
-    pub branch: String,
-    pub has_project: bool,
-    pub local_path: String,
-}
 
 fn get_projects_base_dir() -> PathBuf {
     let home = dirs_next::home_dir().unwrap_or_else(|| PathBuf::from("."));

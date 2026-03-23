@@ -5,48 +5,19 @@ use axum::{
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use uuid::Uuid;
 
+use ars_core::models::{User, Session};
 use crate::app_state::AppState;
 
 const SESSION_COOKIE: &str = "ars_session";
+const CSRF_STATE_COOKIE: &str = "ars_oauth_state";
 const SESSION_TTL_SECS: i64 = 7 * 24 * 60 * 60; // 7 days
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct User {
-    pub id: String,
-    #[serde(rename = "githubId")]
-    pub github_id: i64,
-    pub login: String,
-    #[serde(rename = "displayName")]
-    pub display_name: String,
-    #[serde(rename = "avatarUrl")]
-    pub avatar_url: String,
-    pub email: Option<String>,
-    #[serde(rename = "createdAt")]
-    pub created_at: String,
-    #[serde(rename = "updatedAt")]
-    pub updated_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Session {
-    pub id: String,
-    #[serde(rename = "userId")]
-    pub user_id: String,
-    #[serde(rename = "expiresAt")]
-    pub expires_at: String,
-    #[serde(rename = "createdAt")]
-    pub created_at: String,
-    #[serde(rename = "accessToken")]
-    pub access_token: String,
-}
 
 #[derive(Debug, Deserialize)]
 pub struct OAuthCallbackQuery {
     pub code: String,
-    #[allow(dead_code)]
     pub state: Option<String>,
 }
 
@@ -64,22 +35,46 @@ struct GitHubUser {
     email: Option<String>,
 }
 
-/// GET /auth/github/login - Redirect to GitHub OAuth
-pub async fn github_login(State(state): State<AppState>) -> Redirect {
+/// GET /auth/github/login - Redirect to GitHub OAuth with CSRF state
+pub async fn github_login(
+    State(state): State<AppState>,
+    jar: CookieJar,
+) -> (CookieJar, Redirect) {
+    let csrf_state = Uuid::new_v4().to_string();
+
+    let state_cookie = Cookie::build((CSRF_STATE_COOKIE, csrf_state.clone()))
+        .path("/")
+        .http_only(true)
+        .max_age(time::Duration::minutes(10))
+        .same_site(axum_extra::extract::cookie::SameSite::Lax)
+        .secure(state.is_https());
+
     let url = format!(
-        "https://github.com/login/oauth/authorize?client_id={}&redirect_uri={}&scope=read:user%20user:email%20repo",
+        "https://github.com/login/oauth/authorize?client_id={}&redirect_uri={}&scope=read:user%20user:email%20repo&state={}",
         state.github_client_id,
         urlencoding::encode(&state.github_redirect_uri),
+        urlencoding::encode(&csrf_state),
     );
-    Redirect::temporary(&url)
+    (jar.add(state_cookie), Redirect::temporary(&url))
 }
 
-/// GET /auth/github/callback - Handle OAuth callback
+/// GET /auth/github/callback - Handle OAuth callback with CSRF validation
 pub async fn github_callback(
     State(state): State<AppState>,
     Query(query): Query<OAuthCallbackQuery>,
     jar: CookieJar,
 ) -> Result<(CookieJar, Redirect), (StatusCode, String)> {
+    // Validate CSRF state
+    let expected_state = jar
+        .get(CSRF_STATE_COOKIE)
+        .map(|c| c.value().to_string())
+        .ok_or((StatusCode::BAD_REQUEST, "Missing OAuth state cookie".to_string()))?;
+    let actual_state = query.state
+        .ok_or((StatusCode::BAD_REQUEST, "Missing state parameter".to_string()))?;
+    if expected_state != actual_state {
+        return Err((StatusCode::BAD_REQUEST, "Invalid OAuth state (CSRF check failed)".to_string()));
+    }
+
     // Exchange code for access token
     let client = reqwest::Client::new();
     let token_res = client
@@ -150,7 +145,7 @@ pub async fn github_callback(
     let session = Session {
         id: Uuid::new_v4().to_string(),
         user_id: user.id,
-        expires_at: (Utc::now() + chrono::Duration::seconds(SESSION_TTL_SECS)).to_rfc3339(),
+        expires_at: Some((Utc::now() + chrono::Duration::seconds(SESSION_TTL_SECS)).to_rfc3339()),
         created_at: now,
         access_token: token_data.access_token.clone(),
     };
@@ -161,9 +156,15 @@ pub async fn github_callback(
         .path("/")
         .http_only(true)
         .max_age(time::Duration::seconds(SESSION_TTL_SECS))
-        .same_site(axum_extra::extract::cookie::SameSite::Lax);
+        .same_site(axum_extra::extract::cookie::SameSite::Lax)
+        .secure(state.is_https());
 
-    Ok((jar.add(cookie), Redirect::temporary("/")))
+    // Clear the CSRF state cookie
+    let clear_csrf = Cookie::build((CSRF_STATE_COOKIE, ""))
+        .path("/")
+        .max_age(time::Duration::seconds(0));
+
+    Ok((jar.add(cookie).remove(clear_csrf), Redirect::temporary("/")))
 }
 
 /// GET /auth/me - Get current user
@@ -203,11 +204,13 @@ pub async fn extract_session(state: &AppState, jar: &CookieJar) -> Result<Sessio
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Session lookup failed: {}", e)))?
         .ok_or((StatusCode::UNAUTHORIZED, "Session not found".to_string()))?;
 
-    let expires_at = chrono::DateTime::parse_from_rfc3339(&session.expires_at)
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Invalid session expiry".to_string()))?;
-    if Utc::now() > expires_at {
-        let _ = state.redis.delete_session(&session_id).await;
-        return Err((StatusCode::UNAUTHORIZED, "Session expired".to_string()));
+    if let Some(ref expires_at_str) = session.expires_at {
+        let expires_at = chrono::DateTime::parse_from_rfc3339(expires_at_str)
+            .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Invalid session expiry".to_string()))?;
+        if Utc::now() > expires_at {
+            let _ = state.redis.delete_session(&session_id).await;
+            return Err((StatusCode::UNAUTHORIZED, "Session expired".to_string()));
+        }
     }
 
     Ok(session)
@@ -228,11 +231,13 @@ pub async fn extract_user(state: &AppState, jar: &CookieJar) -> Result<User, (St
         .ok_or((StatusCode::UNAUTHORIZED, "Session not found".to_string()))?;
 
     // Check expiration
-    let expires_at = chrono::DateTime::parse_from_rfc3339(&session.expires_at)
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Invalid session expiry".to_string()))?;
-    if Utc::now() > expires_at {
-        let _ = state.redis.delete_session(&session_id).await;
-        return Err((StatusCode::UNAUTHORIZED, "Session expired".to_string()));
+    if let Some(ref expires_at_str) = session.expires_at {
+        let expires_at = chrono::DateTime::parse_from_rfc3339(expires_at_str)
+            .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Invalid session expiry".to_string()))?;
+        if Utc::now() > expires_at {
+            let _ = state.redis.delete_session(&session_id).await;
+            return Err((StatusCode::UNAUTHORIZED, "Session expired".to_string()));
+        }
     }
 
     state

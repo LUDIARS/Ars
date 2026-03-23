@@ -82,6 +82,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
       components: [],
       children: [],
       position: { x: 250, y: 50 },
+      parentId: null,
       sequences: [],
       subSceneId: null,
       prefabId: null,

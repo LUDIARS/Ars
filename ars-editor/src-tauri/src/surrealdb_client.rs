@@ -7,8 +7,7 @@ use std::collections::HashMap;
 use surrealdb::engine::local::RocksDb;
 use surrealdb::Surreal;
 
-use crate::auth::User;
-use crate::models::Project;
+use ars_core::models::{ProjectSummary, User, Project};
 
 #[derive(Clone)]
 pub struct SurrealClient {
@@ -21,14 +20,6 @@ struct SettingRecord {
     setting_key: String,
     value: String,
     updated_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProjectSummary {
-    pub id: String,
-    pub name: String,
-    #[serde(rename = "updatedAt")]
-    pub updated_at: String,
 }
 
 impl SurrealClient {

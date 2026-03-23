@@ -9,7 +9,7 @@ interface VariableEditorProps {
 export function VariableEditor({ variables, onChange }: VariableEditorProps) {
   const { t } = useI18n();
   const addVariable = () => {
-    onChange([...variables, { name: '', type: 'string', defaultValue: undefined }]);
+    onChange([...variables, { name: '', type: 'string', defaultValue: null }]);
   };
 
   const updateVariable = (index: number, field: keyof Variable, value: string) => {

@@ -1,0 +1,19 @@
+[package]
+name = "ars-mcp-server"
+version = "0.1.0"
+edition = "2021"
+description = "Ars MCP Server - Model Context Protocol server for Claude integration"
+
+[[bin]]
+name = "ars-mcp-server"
+path = "src/main.rs"
+
+[dependencies]
+ars-core = { path = "../ars-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs"] }
+rmcp = { version = "1", features = ["server", "transport-io", "macros"] }
+schemars = "0.8"
+regex-lite = { workspace = true }
