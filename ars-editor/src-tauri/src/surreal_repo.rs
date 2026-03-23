@@ -1,30 +1,29 @@
-/// DynamoDB を使った Repository trait 実装
+/// SurrealDB を使った Repository trait 実装
 ///
-/// 既存の DynamoClient をラップし、ars-core の Repository trait に適合させる。
+/// SurrealClient をラップし、ars-core の UserRepository / ProjectRepository に適合させる。
 use async_trait::async_trait;
 
 use ars_core::error::{ArsError, Result};
 use ars_core::models as core_models;
-use ars_core::repository::{ProjectRepository, SessionRepository, UserRepository};
+use ars_core::repository::{ProjectRepository, UserRepository};
 
-use crate::dynamo::DynamoClient;
+use crate::surrealdb_client::SurrealClient;
 
 // ── Project ─────────────────────────────────────────
 
-pub struct DynamoProjectRepository {
-    client: DynamoClient,
+pub struct SurrealProjectRepository {
+    client: SurrealClient,
 }
 
-impl DynamoProjectRepository {
-    pub fn new(client: DynamoClient) -> Self {
+impl SurrealProjectRepository {
+    pub fn new(client: SurrealClient) -> Self {
         Self { client }
     }
 }
 
 #[async_trait]
-impl ProjectRepository for DynamoProjectRepository {
+impl ProjectRepository for SurrealProjectRepository {
     async fn save(&self, user_id: &str, project_id: &str, project: &core_models::Project) -> Result<()> {
-        // core_models::Project → crate::models::Project 変換
         let local_project = to_local_project(project);
         self.client
             .save_project(user_id, project_id, &local_project)
@@ -65,18 +64,18 @@ impl ProjectRepository for DynamoProjectRepository {
 
 // ── User ────────────────────────────────────────────
 
-pub struct DynamoUserRepository {
-    client: DynamoClient,
+pub struct SurrealUserRepository {
+    client: SurrealClient,
 }
 
-impl DynamoUserRepository {
-    pub fn new(client: DynamoClient) -> Self {
+impl SurrealUserRepository {
+    pub fn new(client: SurrealClient) -> Self {
         Self { client }
     }
 }
 
 #[async_trait]
-impl UserRepository for DynamoUserRepository {
+impl UserRepository for SurrealUserRepository {
     async fn put(&self, user: &core_models::User) -> Result<()> {
         let local_user = to_local_user(user);
         self.client
@@ -108,57 +107,9 @@ impl UserRepository for DynamoUserRepository {
     }
 }
 
-// ── Session ─────────────────────────────────────────
-
-pub struct DynamoSessionRepository {
-    client: DynamoClient,
-}
-
-impl DynamoSessionRepository {
-    pub fn new(client: DynamoClient) -> Self {
-        Self { client }
-    }
-}
-
-#[async_trait]
-impl SessionRepository for DynamoSessionRepository {
-    async fn put(&self, session: &core_models::Session) -> Result<()> {
-        let local_session = to_local_session(session);
-        self.client
-            .put_session(&local_session)
-            .await
-            .map_err(ArsError::Storage)
-    }
-
-    async fn get(&self, session_id: &str) -> Result<Option<core_models::Session>> {
-        let result = self.client
-            .get_session(session_id)
-            .await
-            .map_err(ArsError::Storage)?;
-        Ok(result.map(|s| to_core_session(&s)))
-    }
-
-    async fn delete(&self, session_id: &str) -> Result<()> {
-        self.client
-            .delete_session(session_id)
-            .await
-            .map_err(ArsError::Storage)
-    }
-
-    async fn get_active(&self) -> Result<Option<core_models::Session>> {
-        // Webモードでは cookie からセッションIDを取るため、
-        // この関数は使われない。get() を使う。
-        Ok(None)
-    }
-}
-
 // ── 型変換ヘルパー ──────────────────────────────────
-//
-// core_models と crate::models / crate::auth の相互変換。
-// モジュール分離完了後、crate::models を ars-core に置き換えたら不要になる。
 
 fn to_local_project(p: &core_models::Project) -> crate::models::Project {
-    // 同一構造なので JSON 経由で変換（型移行完了まで）
     let json = serde_json::to_value(p).unwrap();
     serde_json::from_value(json).unwrap()
 }
@@ -192,29 +143,5 @@ fn to_core_user(u: &crate::auth::User) -> core_models::User {
         email: u.email.clone(),
         created_at: u.created_at.clone(),
         updated_at: u.updated_at.clone(),
-    }
-}
-
-fn to_local_session(s: &core_models::Session) -> crate::auth::Session {
-    crate::auth::Session {
-        id: s.id.clone(),
-        user_id: s.user_id.clone(),
-        expires_at: s.expires_at.clone().unwrap_or_default(),
-        created_at: s.created_at.clone(),
-        access_token: s.access_token.clone(),
-    }
-}
-
-fn to_core_session(s: &crate::auth::Session) -> core_models::Session {
-    core_models::Session {
-        id: s.id.clone(),
-        user_id: s.user_id.clone(),
-        expires_at: if s.expires_at.is_empty() {
-            None
-        } else {
-            Some(s.expires_at.clone())
-        },
-        created_at: s.created_at.clone(),
-        access_token: s.access_token.clone(),
     }
 }

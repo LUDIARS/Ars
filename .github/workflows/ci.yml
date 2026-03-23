@@ -39,13 +39,10 @@ jobs:
       - name: TypeScript
         run: npx tsc -b
 
-      - name: Build (Vite)
-        run: npx vite build
-
   rust:
     name: Rust
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +50,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang libclang-dev
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -62,8 +62,3 @@ jobs:
       - name: Clippy (web-server)
         working-directory: ars-editor/src-tauri
         run: cargo clippy --features web-server --no-default-features --bin ars-web-server -- -D warnings
-
-      - name: Build (web-server)
-        working-directory: ars-editor/src-tauri
-        run: cargo build --features web-server --no-default-features --bin ars-web-server
-

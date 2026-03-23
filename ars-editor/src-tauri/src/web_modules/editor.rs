@@ -61,7 +61,7 @@ async fn api_list_projects() -> Result<Json<Vec<String>>, (StatusCode, String)> 
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
 }
 
-// ========== DynamoDB-backed cloud project APIs ==========
+// ========== Cloud project APIs ==========
 
 #[derive(Deserialize)]
 struct CloudSaveRequest {
@@ -77,7 +77,7 @@ async fn api_cloud_save_project(
 ) -> Result<Json<()>, (StatusCode, String)> {
     let user = auth::extract_user(&state, &jar).await?;
     state
-        .dynamo
+        .surreal
         .save_project(&user.id, &req.project_id, &req.project)
         .await
         .map(Json)
@@ -97,7 +97,7 @@ async fn api_cloud_load_project(
 ) -> Result<Json<Project>, (StatusCode, String)> {
     let user = auth::extract_user(&state, &jar).await?;
     state
-        .dynamo
+        .surreal
         .load_project(&user.id, &q.project_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?
@@ -108,10 +108,10 @@ async fn api_cloud_load_project(
 async fn api_cloud_list_projects(
     State(state): State<AppState>,
     jar: CookieJar,
-) -> Result<Json<Vec<crate::dynamo::ProjectSummary>>, (StatusCode, String)> {
+) -> Result<Json<Vec<crate::surrealdb_client::ProjectSummary>>, (StatusCode, String)> {
     let user = auth::extract_user(&state, &jar).await?;
     state
-        .dynamo
+        .surreal
         .list_user_projects(&user.id)
         .await
         .map(Json)
@@ -125,7 +125,7 @@ async fn api_cloud_delete_project(
 ) -> Result<Json<()>, (StatusCode, String)> {
     let user = auth::extract_user(&state, &jar).await?;
     state
-        .dynamo
+        .surreal
         .delete_project(&user.id, &project_id)
         .await
         .map(|_| Json(()))
