@@ -51,9 +51,14 @@ path = "src/web_main.rs"
 required-features = ["web-server"]
 
 [dependencies]
+# Ars core crates
+ars-core = { path = "../../crates/ars-core" }
+ars-project = { path = "../../crates/ars-project" }
+# Common
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
+async-trait = "0.1"
 tauri = { version = "2.10.3", optional = true }
 tauri-plugin-log = { version = "2", optional = true }
 dirs-next = "2.0"

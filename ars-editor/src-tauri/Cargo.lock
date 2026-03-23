@@ -79,6 +79,9 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 name = "app"
 version = "0.1.0"
 dependencies = [
+ "ars-core",
+ "ars-project",
+ "async-trait",
  "aws-config",
  "aws-sdk-dynamodb",
  "axum",
@@ -112,6 +115,29 @@ name = "arrayvec"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
+
+[[package]]
+name = "ars-core"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
+name = "ars-project"
+version = "0.1.0"
+dependencies = [
+ "ars-core",
+ "async-trait",
+ "chrono",
+ "dirs",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "async-trait"
