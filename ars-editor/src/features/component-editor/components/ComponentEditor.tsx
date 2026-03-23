@@ -20,6 +20,7 @@ function createEmptyComponent(): Component {
     variables: [],
     tasks: [],
     dependencies: [],
+    sourceModuleId: null,
   };
 }
 
@@ -64,7 +65,7 @@ export function ComponentEditor() {
     const newErrors: Record<string, string> = {};
     if (!draft.name.trim()) newErrors['name'] = t('componentEditor.nameRequired');
     if (!draft.domain.trim()) newErrors['domain'] = t('componentEditor.domainRequired');
-    if (!CATEGORIES.includes(draft.category)) newErrors['category'] = t('componentEditor.invalidCategory');
+    if (!(CATEGORIES as string[]).includes(draft.category)) newErrors['category'] = t('componentEditor.invalidCategory');
     if (draft.tasks.length === 0) newErrors['tasks'] = t('componentEditor.taskRequired');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
