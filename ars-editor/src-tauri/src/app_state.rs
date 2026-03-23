@@ -1,4 +1,10 @@
+use std::sync::Arc;
+
+use ars_core::repository::{ProjectRepository, SessionRepository, UserRepository};
+
 use crate::redis_client::RedisClient;
+use crate::redis_repo::RedisSessionRepository;
+use crate::surreal_repo::{SurrealProjectRepository, SurrealUserRepository};
 use crate::surrealdb_client::SurrealClient;
 
 #[derive(Clone)]
@@ -8,6 +14,10 @@ pub struct AppState {
     pub github_redirect_uri: String,
     pub surreal: SurrealClient,
     pub redis: RedisClient,
+    // Repository trait objects
+    pub project_repo: Arc<dyn ProjectRepository>,
+    pub user_repo: Arc<dyn UserRepository>,
+    pub session_repo: Arc<dyn SessionRepository>,
 }
 
 impl AppState {
@@ -30,6 +40,13 @@ impl AppState {
             .await
             .expect("Failed to initialize Redis");
 
+        let project_repo: Arc<dyn ProjectRepository> =
+            Arc::new(SurrealProjectRepository::new(surreal.clone()));
+        let user_repo: Arc<dyn UserRepository> =
+            Arc::new(SurrealUserRepository::new(surreal.clone()));
+        let session_repo: Arc<dyn SessionRepository> =
+            Arc::new(RedisSessionRepository::new(redis.clone()));
+
         Self {
             github_client_id: std::env::var("GITHUB_CLIENT_ID")
                 .expect("GITHUB_CLIENT_ID must be set"),
@@ -39,6 +56,9 @@ impl AppState {
                 .unwrap_or_else(|_| "http://localhost:5173/auth/github/callback".to_string()),
             surreal,
             redis,
+            project_repo,
+            user_repo,
+            session_repo,
         }
     }
 }

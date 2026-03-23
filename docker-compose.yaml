@@ -1,9 +1,9 @@
 # =============================================================================
 # Ars - Docker Compose
 #
-# 統合Webサーバー（Editor + Resource Depot + Data Organizer）を起動します。
+# 統合Webサーバー（Editor + Collaboration）を起動します。
 # Redis: セッション管理
-# SurrealDB (embedded): ユーザー・プロジェクト・設定（グラフDB）
+# SurrealDB (embedded): ユーザー・プロジェクト（グラフDB）
 #
 # 使用方法:
 #   docker compose up -d        # サービス起動

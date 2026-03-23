@@ -36,8 +36,6 @@ web-server = [
     "dep:dashmap",
     "dep:surrealdb",
     "dep:redis",
-    "resource-depot/web-server",
-    "data-organizer/web-server",
 ]
 
 [[bin]]
@@ -51,9 +49,14 @@ path = "src/web_main.rs"
 required-features = ["web-server"]
 
 [dependencies]
+# Ars core crates
+ars-core = { path = "../../crates/ars-core" }
+ars-project = { path = "../../crates/ars-project" }
+# Common
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
+async-trait = "0.1"
 tauri = { version = "2.10.3", optional = true }
 tauri-plugin-log = { version = "2", optional = true }
 dirs-next = "2.0"
@@ -71,14 +74,11 @@ time = { version = "0.3", optional = true }
 urlencoding = { version = "2", optional = true }
 # Git operations
 git2 = { version = "0.19", optional = true }
-# Module crates
-resource-depot = { path = "../../resource-depot/src-tauri", default-features = false, optional = true }
-data-organizer = { path = "../../data-organizer", default-features = false, optional = true }
 dirs = { version = "6", optional = true }
 # Collaboration (WebSocket + shared state)
 futures = { version = "0.3", optional = true }
 dashmap = { version = "6", optional = true }
-# Local embedded database (SurrealDB)
+# SurrealDB (graph DB: users, projects)
 surrealdb = { version = "2", optional = true, features = ["kv-rocksdb"] }
 # Redis (session management)
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }

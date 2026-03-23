@@ -31,9 +31,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# モジュールクレートをコピー
-COPY resource-depot/src-tauri/ resource-depot/src-tauri/
-COPY data-organizer/ data-organizer/
+# コアクレートをコピー
+COPY crates/ crates/
 
 # メインクレートの依存キャッシュ
 WORKDIR /app/ars-editor/src-tauri
