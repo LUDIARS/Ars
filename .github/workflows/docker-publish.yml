@@ -39,7 +39,7 @@ jobs:
     # All run steps use PowerShell (Windows self-hosted)
     defaults:
       run:
-        shell: pwsh
+        shell: powershell
 
     steps:
       - uses: actions/checkout@v4
@@ -84,9 +84,9 @@ jobs:
           # Platforms
           if (-not $plat -or $plat -eq 'all') { $plat = 'linux/amd64,linux/arm64' }
 
-          # Write outputs
-          "tags=$($tags -join "`n")"  | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "platforms=$plat"           | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          # Write outputs (UTF-8 without BOM for GitHub Actions)
+          "tags=$($tags -join "`n")"  | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "platforms=$plat"           | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
           Write-Host "Tags:`n$($tags -join "`n")"
           Write-Host "Platforms: $plat"
