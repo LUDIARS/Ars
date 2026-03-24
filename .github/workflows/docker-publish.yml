@@ -35,17 +35,57 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 180
+
+    defaults:
+      run:
+        shell: pwsh
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: Ensure Docker is running
+        run: |
+          # Start Docker Desktop if not already running
+          $dockerDesktop = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+          if (Test-Path $dockerDesktop) {
+            $proc = Get-Process "Docker Desktop" -ErrorAction SilentlyContinue
+            if (-not $proc) {
+              Write-Host "Starting Docker Desktop..."
+              Start-Process $dockerDesktop
+            }
+          }
+          # Wait for Docker daemon to be ready (up to 120s)
+          $timeout = 120
+          $elapsed = 0
+          while ($elapsed -lt $timeout) {
+            $result = docker info 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Docker daemon is ready."
+              return
+            }
+            Write-Host "Waiting for Docker daemon... ($elapsed s)"
+            Start-Sleep -Seconds 5
+            $elapsed += 5
+          }
+          Write-Error "Docker daemon did not start within ${timeout}s"
+          exit 1
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        run: |
+          # docker-container ドライバーで buildx インスタンスを作成
+          # (Windows でも WSL2 バックエンド経由でマルチプラットフォーム対応)
+          $builder = "ars-multiplatform"
+          $existing = docker buildx ls 2>&1 | Select-String "^$builder"
+          if (-not $existing) {
+            Write-Host "Creating buildx builder: $builder"
+            docker buildx create --name $builder --driver docker-container --use
+          } else {
+            Write-Host "Using existing builder: $builder"
+            docker buildx use $builder
+          }
+          docker buildx inspect --bootstrap
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -69,20 +109,24 @@ jobs:
       - name: Resolve target platforms
         id: platforms
         run: |
-          INPUT="${{ inputs.platform }}"
-          if [ -z "$INPUT" ] || [ "$INPUT" = "all" ]; then
-            echo "platforms=linux/amd64,linux/arm64" >> "$GITHUB_OUTPUT"
-          else
-            echo "platforms=$INPUT" >> "$GITHUB_OUTPUT"
-          fi
+          $input = "${{ inputs.platform }}"
+          if ([string]::IsNullOrEmpty($input) -or $input -eq "all") {
+            "platforms=linux/amd64,linux/arm64" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          } else {
+            "platforms=$input" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          }
 
       - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: ${{ steps.platforms.outputs.platforms }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          provenance: true
-          sbom: true
+        run: |
+          $tags = "${{ steps.meta.outputs.tags }}" -split "`n" | Where-Object { $_ -ne "" }
+          $tagArgs = ($tags | ForEach-Object { "--tag", $_ }) -join " "
+
+          $labels = "${{ steps.meta.outputs.labels }}" -split "`n" | Where-Object { $_ -ne "" }
+          $labelArgs = ($labels | ForEach-Object { "--label", $_ }) -join " "
+
+          $platforms = "${{ steps.platforms.outputs.platforms }}"
+
+          $cmd = "docker buildx build --platform $platforms --push $tagArgs $labelArgs --provenance=true --sbom=true ."
+          Write-Host "Running: $cmd"
+          Invoke-Expression $cmd
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
