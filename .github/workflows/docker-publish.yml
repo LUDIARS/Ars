@@ -34,7 +34,7 @@ jobs:
 
       - name: Ensure Docker is running (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
+        shell: powershell
         run: |
           # Start Docker Desktop if not already running
           $dockerDesktop = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
