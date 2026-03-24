@@ -32,6 +32,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Ensure Docker is running (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Start Docker Desktop if not already running
+          $dockerDesktop = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+          if (Test-Path $dockerDesktop) {
+            $proc = Get-Process "Docker Desktop" -ErrorAction SilentlyContinue
+            if (-not $proc) {
+              Write-Host "Starting Docker Desktop..."
+              Start-Process $dockerDesktop
+            }
+          }
+          # Wait for Docker daemon to be ready (up to 120s)
+          $timeout = 120
+          $elapsed = 0
+          while ($elapsed -lt $timeout) {
+            $result = docker info 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Docker daemon is ready."
+              exit 0
+            }
+            Write-Host "Waiting for Docker daemon... ($elapsed s)"
+            Start-Sleep -Seconds 5
+            $elapsed += 5
+          }
+          Write-Error "Docker daemon did not start within ${timeout}s"
+          exit 1
+
       - name: Set up QEMU
         if: runner.os == 'Linux'
         uses: docker/setup-qemu-action@v3
