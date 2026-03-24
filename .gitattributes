@@ -1,0 +1,5 @@
+# Force LF line endings for shell scripts (critical for Docker builds on Windows runners)
+*.sh text eol=lf
+
+# Dockerfile should also stay LF
+Dockerfile text eol=lf
