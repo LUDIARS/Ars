@@ -3,7 +3,7 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { EditorPage } from './features/editor-page';
 import { CollabPresence } from './features/node-editor/components/CollabPresence';
 import { LanguageSettings } from './components/LanguageSettings';
-import { InfisicalSetup } from './components/InfisicalSetup';
+import { SecretsSetup } from './components/SecretsSetup';
 import { useAuthStore } from './stores/authStore';
 import { useCollabStore } from './stores/collabStore';
 import { useProjectStore } from './stores/projectStore';
@@ -30,7 +30,7 @@ function App() {
 
   // セットアップが必要な場合はウィザードを表示
   if (needsSetup === true) {
-    return <InfisicalSetup />;
+    return <SecretsSetup />;
   }
 
   // ロード中

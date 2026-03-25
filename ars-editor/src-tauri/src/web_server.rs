@@ -13,7 +13,7 @@ use axum::Router;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
-use ars_secrets::InfisicalConfig;
+use ars_secrets::SecretsConfig;
 
 use crate::app_state::AppState;
 use crate::collab::{self, CollabState};
@@ -23,9 +23,9 @@ use crate::web_modules::setup::SetupState;
 pub async fn serve(port: u16, static_dir: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
 
-    // Check if Infisical config exists; if not, start in setup mode first.
-    if !InfisicalConfig::exists() {
-        println!("Infisical configuration not found — starting setup mode.");
+    // Check if secrets config exists; if not, start in setup mode first.
+    if !SecretsConfig::exists() {
+        println!("Secrets configuration not found — starting setup mode.");
         println!("  Open http://localhost:{} to configure.", port);
 
         run_setup_server(addr, static_dir.as_deref()).await?;

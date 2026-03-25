@@ -1,4 +1,4 @@
-/// Infisical setup API client.
+/// Secrets setup API client.
 
 export interface SetupStatus {
   needs_setup: boolean;
@@ -14,13 +14,24 @@ export interface SaveResult {
   path: string;
 }
 
-export interface SetupConfig {
+export type SecretsProvider = 'infisical' | 'aws-ssm';
+
+export interface InfisicalSetupConfig {
+  provider: 'infisical';
   host: string;
   client_id: string;
   client_secret: string;
   project_id: string;
   environment: string;
 }
+
+export interface AwsSsmSetupConfig {
+  provider: 'aws-ssm';
+  region: string | null;
+  path_prefix: string | null;
+}
+
+export type SetupConfig = InfisicalSetupConfig | AwsSsmSetupConfig;
 
 async function setupFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api/setup${url}`, {

@@ -20,7 +20,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    /// Initialize from Infisical secrets (no environment variables at startup).
+    /// Initialize from secrets provider (Infisical or AWS SSM).
     ///
     /// The `secrets.toml` config file is auto-discovered from:
     ///   1. Current working directory

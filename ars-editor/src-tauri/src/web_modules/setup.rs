@@ -1,8 +1,8 @@
-/// Setup module — Infisical initial configuration API.
+/// Setup module — secrets provider initial configuration API.
 ///
 /// Provides endpoints for the GUI setup wizard when `secrets.toml` is not found:
 ///   - GET  /api/setup/status   — check whether setup is needed
-///   - POST /api/setup/validate — validate Infisical credentials (attempt auth)
+///   - POST /api/setup/validate — validate credentials (attempt auth)
 ///   - POST /api/setup/save     — write secrets.toml and signal restart
 use axum::{
     extract::State,
@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::watch;
 
-use ars_secrets::InfisicalConfig;
+use ars_secrets::{AwsSsmConfig, InfisicalConfig, SecretsConfig, SecretsProvider};
 
 /// Shared state for the setup-mode server.
 #[derive(Clone)]
@@ -24,19 +24,29 @@ pub struct SetupState {
     pub setup_done_tx: Arc<watch::Sender<bool>>,
 }
 
+// ─── Request / Response types ─────────────────────────────────────────────────
+
 #[derive(Serialize)]
 struct StatusResponse {
-    /// `true` means setup is required (no valid config found).
     needs_setup: bool,
 }
 
 #[derive(Deserialize)]
-struct SetupRequest {
-    host: String,
-    client_id: String,
-    client_secret: String,
-    project_id: String,
-    environment: String,
+#[serde(tag = "provider")]
+enum SetupRequest {
+    #[serde(rename = "infisical")]
+    Infisical {
+        host: String,
+        client_id: String,
+        client_secret: String,
+        project_id: String,
+        environment: String,
+    },
+    #[serde(rename = "aws-ssm")]
+    AwsSsm {
+        region: Option<String>,
+        path_prefix: Option<String>,
+    },
 }
 
 #[derive(Serialize)]
@@ -51,29 +61,62 @@ struct SaveResponse {
     path: String,
 }
 
+// ─── Handlers ─────────────────────────────────────────────────────────────────
+
 /// GET /api/setup/status
 async fn setup_status() -> Json<StatusResponse> {
     Json(StatusResponse {
-        needs_setup: !InfisicalConfig::exists(),
+        needs_setup: !SecretsConfig::exists(),
     })
 }
 
-/// POST /api/setup/validate — try to authenticate with the provided credentials.
-async fn setup_validate(
-    Json(req): Json<SetupRequest>,
-) -> Json<ValidateResponse> {
-    let config = InfisicalConfig {
-        host: req.host,
-        client_id: req.client_id,
-        client_secret: req.client_secret,
-        project_id: req.project_id,
-        environment: req.environment,
-        shared_path: "/shared".to_string(),
-        personal_path_prefix: "/personal".to_string(),
-        cache_ttl_secs: 300,
-    };
+/// Build a SecretsConfig from the setup request.
+fn build_config(req: &SetupRequest) -> SecretsConfig {
+    match req {
+        SetupRequest::Infisical {
+            host,
+            client_id,
+            client_secret,
+            project_id,
+            environment,
+        } => SecretsConfig {
+            provider: SecretsProvider::Infisical,
+            infisical: Some(InfisicalConfig {
+                host: host.clone(),
+                client_id: client_id.clone(),
+                client_secret: client_secret.clone(),
+                project_id: project_id.clone(),
+                environment: environment.clone(),
+                shared_path: "/shared".to_string(),
+                personal_path_prefix: "/personal".to_string(),
+                cache_ttl_secs: 300,
+            }),
+            aws_ssm: None,
+        },
+        SetupRequest::AwsSsm {
+            region,
+            path_prefix,
+        } => SecretsConfig {
+            provider: SecretsProvider::AwsSsm,
+            infisical: None,
+            aws_ssm: Some(AwsSsmConfig {
+                region: region.clone(),
+                path_prefix: path_prefix
+                    .clone()
+                    .unwrap_or_else(|| "/ars".to_string()),
+                shared_path: "/shared".to_string(),
+                personal_path_prefix: "/personal".to_string(),
+                cache_ttl_secs: 300,
+            }),
+        },
+    }
+}
 
-    match ars_secrets::SecretsManager::new(config).await {
+/// POST /api/setup/validate — try to authenticate with the provided credentials.
+async fn setup_validate(Json(req): Json<SetupRequest>) -> Json<ValidateResponse> {
+    let config = build_config(&req);
+
+    match ars_secrets::SecretsManager::from_config(&config).await {
         Ok(_) => Json(ValidateResponse {
             valid: true,
             error: None,
@@ -90,18 +133,9 @@ async fn setup_save(
     State(state): State<SetupState>,
     Json(req): Json<SetupRequest>,
 ) -> Result<Json<SaveResponse>, (StatusCode, String)> {
-    let config = InfisicalConfig {
-        host: req.host,
-        client_id: req.client_id,
-        client_secret: req.client_secret,
-        project_id: req.project_id,
-        environment: req.environment,
-        shared_path: "/shared".to_string(),
-        personal_path_prefix: "/personal".to_string(),
-        cache_ttl_secs: 300,
-    };
+    let config = build_config(&req);
 
-    let path = InfisicalConfig::default_config_path();
+    let path = SecretsConfig::default_config_path();
     config
         .save_to_file(&path)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
