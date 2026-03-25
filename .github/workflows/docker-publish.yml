@@ -27,115 +27,89 @@ concurrency:
 permissions:
   contents: read
   packages: write
-  attestations: write   # SLSA provenance (public リポジトリ移行後に有効)
-  id-token: write       # OIDC for provenance signing
 
 env:
-  REGISTRY: ghcr.io
+  IMAGE: ghcr.io/ludiars/ars
 
 jobs:
   build:
     runs-on: self-hosted
-    timeout-minutes: 60
+    timeout-minutes: 180
+
+    # All run steps use PowerShell (Windows self-hosted)
+    defaults:
+      run:
+        shell: powershell
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Ensure Docker is running (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
+      # ── Docker Desktop が起動しているか確認 ──
+      - name: Ensure Docker is running
         run: |
-          # Start Docker Desktop if not already running
-          $dockerDesktop = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
-          if (Test-Path $dockerDesktop) {
-            $proc = Get-Process "Docker Desktop" -ErrorAction SilentlyContinue
-            if (-not $proc) {
-              Write-Host "Starting Docker Desktop..."
-              Start-Process $dockerDesktop
-            }
-          }
-          # Wait for Docker daemon to be ready (up to 120s)
-          $timeout = 120
-          $elapsed = 0
+          $timeout = 120; $elapsed = 0
           while ($elapsed -lt $timeout) {
-            $result = docker info 2>&1
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host "Docker daemon is ready."
-              exit 0
-            }
-            Write-Host "Waiting for Docker daemon... ($elapsed s)"
-            Start-Sleep -Seconds 5
-            $elapsed += 5
+            docker info 2>&1 | Out-Null
+            if ($LASTEXITCODE -eq 0) { Write-Host "Docker is ready."; return }
+            Write-Host "Waiting for Docker... ($elapsed s)"
+            Start-Sleep -Seconds 5; $elapsed += 5
           }
-          Write-Error "Docker daemon did not start within ${timeout}s"
-          exit 1
+          Write-Error "Docker did not start within ${timeout}s"; exit 1
 
-      - name: Set up QEMU
-        if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx (Linux)
-        if: runner.os == 'Linux'
-        uses: docker/setup-buildx-action@v3
-
-      - name: Set up Docker Buildx (Windows)
-        if: runner.os == 'Windows'
-        uses: docker/setup-buildx-action@v3
-        with:
-          driver: docker
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/ars
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ inputs.version }},enable=${{ inputs.version != '' }}
-
-      - name: Resolve target platforms
-        id: platforms
-        shell: bash
+      # ── タグ・プラットフォームを計算 ──
+      - name: Compute build parameters
+        id: params
         run: |
-          INPUT="${{ inputs.platform }}"
-          if [ -z "$INPUT" ] || [ "$INPUT" = "all" ]; then
-            echo "platforms=linux/amd64,linux/arm64" >> "$GITHUB_OUTPUT"
-          else
-            echo "platforms=$INPUT" >> "$GITHUB_OUTPUT"
-          fi
+          $sha     = "${{ github.sha }}".Substring(0, 7)
+          $ref     = "${{ github.ref }}"
+          $refName = "${{ github.ref_name }}"
+          $input   = "${{ inputs.version }}"
+          $plat    = "${{ inputs.platform }}"
 
-      # Linux: マルチプラットフォーム (amd64 + arm64)
-      - name: Build and push (Linux)
-        if: runner.os == 'Linux'
-        id: push-linux
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: ${{ steps.platforms.outputs.platforms }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          provenance: true
-          sbom: true
+          # Tags
+          $tags = [System.Collections.Generic.List[string]]::new()
+          $tags.Add("${env:IMAGE}:${sha}")
 
-      # Windows: docker ドライバー使用 (docker-container は Windows パイプ非対応)
-      - name: Build and push (Windows)
-        if: runner.os == 'Windows'
-        id: push-windows
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: ${{ steps.platforms.outputs.platforms }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          if ($ref -eq "refs/heads/${{ github.event.repository.default_branch }}") {
+            $tags.Add("${env:IMAGE}:latest")
+          }
+          if ($ref -match '^refs/tags/v(.+)$') {
+            $ver = $Matches[1]
+            $tags.Add("${env:IMAGE}:${ver}")
+            $parts = $ver.Split('.')
+            if ($parts.Length -ge 2) { $tags.Add("${env:IMAGE}:$($parts[0]).$($parts[1])") }
+          }
+          if ($input) { $tags.Add("${env:IMAGE}:${input}") }
+
+          # Platforms
+          if (-not $plat -or $plat -eq 'all') { $plat = 'linux/amd64,linux/arm64' }
+
+          # Write outputs (UTF-8 without BOM for GitHub Actions)
+          "tags=$($tags -join "`n")"  | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "platforms=$plat"           | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host "Tags:`n$($tags -join "`n")"
+          Write-Host "Platforms: $plat"
+
+      # ── Linux コンテナ内でビルド＆プッシュ ──
+      # Docker Desktop の Docker ソケットをマウントして
+      # Linux 環境 (docker:24-cli) の中で buildx を実行する。
+      # → bash パス問題を完全回避 + buildx multi-platform 対応
+      - name: Build and push (inside Linux container)
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          $tags      = "${{ steps.params.outputs.tags }}"
+          $platforms = "${{ steps.params.outputs.platforms }}"
+
+          docker run --rm `
+            -v "${PWD}:/workspace" `
+            -v /var/run/docker.sock:/var/run/docker.sock `
+            -w /workspace `
+            -e "GHCR_TOKEN=${env:GHCR_TOKEN}" `
+            -e "GHCR_USER=${env:GHCR_USER}" `
+            -e "IMAGE=${env:IMAGE}" `
+            -e "PLATFORMS=${platforms}" `
+            -e "TAGS=${tags}" `
+            docker:24-cli sh -c "sed -i 's/\r$//' /workspace/.github/scripts/docker-build.sh && sh /workspace/.github/scripts/docker-build.sh"
