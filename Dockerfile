@@ -68,11 +68,10 @@ COPY --from=frontend-builder /app/dist ./dist
 RUN mkdir -p /app/data/surrealdb && chown -R ars:ars /app
 USER ars
 
-ENV PORT=5173
-ENV SURREALDB_DATA_DIR=/app/data/surrealdb
-ENV REDIS_URL=redis://redis:6379
 EXPOSE 5173
 
 VOLUME ["/app/data"]
 
-CMD ["./ars-web-server", "./dist"]
+# secrets.toml はボリュームマウントで /app/ に配置される
+# ポートはCLI引数で指定（デフォルト: 5173）
+CMD ["./ars-web-server", "./dist", "5173"]

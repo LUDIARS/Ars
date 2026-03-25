@@ -196,6 +196,7 @@ version = "0.1.0"
 dependencies = [
  "ars-core",
  "ars-project",
+ "ars-secrets",
  "async-trait",
  "axum",
  "axum-extra",
@@ -331,6 +332,19 @@ dependencies = [
  "dirs",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "ars-secrets"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "toml 0.8.2",
 ]
 
 [[package]]

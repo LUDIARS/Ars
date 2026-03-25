@@ -41,15 +41,9 @@ services:
     container_name: ars
     ports:
       - "${ARS_PORT:-5173}:5173"
-    environment:
-      - PORT=5173
-      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
-      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
-      - GITHUB_REDIRECT_URI=${GITHUB_REDIRECT_URI:-http://localhost:5173/auth/github/callback}
-      - SURREALDB_DATA_DIR=/app/data/surrealdb
-      - REDIS_URL=redis://redis:6379
     volumes:
       - ars-data:/app/data
+      - ./secrets.toml:/app/secrets.toml:ro
     depends_on:
       - redis
     restart: unless-stopped
