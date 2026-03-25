@@ -196,6 +196,49 @@ pub struct ProjectSummary {
     pub updated_at: String,
 }
 
+// ── Installed Module ────────────────────────────────
+
+/// Gitリポジトリからインストールされたモジュールの管理情報
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct InstalledModule {
+    pub id: String,
+    /// モジュール名
+    pub name: String,
+    /// Git clone URL
+    #[serde(rename = "gitUrl")]
+    pub git_url: String,
+    /// ブランチまたはタグ
+    #[serde(rename = "gitRef")]
+    #[serde(default = "default_git_ref")]
+    pub git_ref: String,
+    /// ローカルのクローン先パス
+    #[serde(rename = "localPath")]
+    pub local_path: String,
+    /// インストール日時 (RFC3339)
+    #[serde(rename = "installedAt")]
+    pub installed_at: String,
+    /// 最終更新日時 (RFC3339)
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
+    /// 有効/無効
+    pub enabled: bool,
+    /// リポジトリの説明
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+fn default_git_ref() -> String {
+    "main".to_string()
+}
+
+/// インストール済みモジュール一覧を管理する設定ファイル
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ModuleRegistry {
+    pub modules: Vec<InstalledModule>,
+}
+
 // ── Git ─────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
