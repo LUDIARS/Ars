@@ -16,7 +16,8 @@ pub async fn serve(port: u16, static_dir: Option<String>) -> Result<(), Box<dyn 
     let state = AppState::from_env().await?;
     let collab_state = CollabState::new();
 
-    let editor_router = web_modules::editor::router(state);
+    let editor_router = web_modules::editor::router(state.clone());
+    let module_router = web_modules::module_manager::router(state);
 
     // コラボレーションWebSocketルート
     let collab_router = Router::new()
@@ -24,6 +25,7 @@ pub async fn serve(port: u16, static_dir: Option<String>) -> Result<(), Box<dyn 
         .with_state(collab_state);
 
     let app = editor_router
+        .merge(module_router)
         .merge(collab_router)
         .layer(CorsLayer::permissive());
 
@@ -36,6 +38,7 @@ pub async fn serve(port: u16, static_dir: Option<String>) -> Result<(), Box<dyn 
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
     println!("Ars web server listening on http://localhost:{}", port);
     println!("  Editor:        /api/project/*, /api/cloud/*, /api/git/*");
+    println!("  Modules:       /api/modules/*");
     println!("  Collaboration: /ws/collab (WebSocket)");
 
     let listener = tokio::net::TcpListener::bind(addr).await

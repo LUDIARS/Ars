@@ -7,6 +7,8 @@ pub mod auth;
 #[cfg(feature = "web-server")]
 pub mod git_ops;
 #[cfg(feature = "web-server")]
+pub mod git_module_ops;
+#[cfg(feature = "web-server")]
 pub mod web_server;
 #[cfg(feature = "web-server")]
 pub mod web_modules;
