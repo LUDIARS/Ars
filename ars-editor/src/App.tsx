@@ -15,36 +15,9 @@ type Page = 'editor';
 
 function App() {
   const { t, locale } = useI18n();
-  const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
-
-  // Web版のみ: セットアップ状態を確認
-  useEffect(() => {
-    if (isTauri()) {
-      setNeedsSetup(false);
-      return;
-    }
-    getSetupStatus()
-      .then((status) => setNeedsSetup(status.needs_setup))
-      .catch(() => setNeedsSetup(false));
-  }, []);
-
-  // セットアップが必要な場合はウィザードを表示
-  if (needsSetup === true) {
-    return <SecretsSetup />;
-  }
-
-  // ロード中
-  if (needsSetup === null && !isTauri()) {
-    return (
-      <div className="flex items-center justify-center h-screen w-screen bg-zinc-900 text-zinc-400 text-sm">
-        Loading...
-      </div>
-    );
-  }
-
-  const NAV_ITEMS: { key: Page; label: string }[] = [
-    { key: 'editor', label: t('app.nav.editor') },
-  ];
+  // Tauri desktop: セットアップ不要（ローカルモード）
+  // Web: 起動時にセットアップ状態を非同期チェック
+  const [needsSetup, setNeedsSetup] = useState<boolean | null>(() => isTauri() ? false : null);
   const [page, setPage] = useState<Page>('editor');
   const [showLanguageSettings, setShowLanguageSettings] = useState(false);
   const user = useAuthStore((s) => s.user);
@@ -55,6 +28,14 @@ function App() {
   const collabConnected = useCollabStore((s) => s.connected);
   const collabUsers = useCollabStore((s) => s.users);
   const projectName = useProjectStore((s) => s.project.name);
+
+  // Web版のみ: セットアップ状態を確認
+  useEffect(() => {
+    if (isTauri()) return;
+    getSetupStatus()
+      .then((status) => setNeedsSetup(status.needs_setup))
+      .catch(() => setNeedsSetup(false));
+  }, []);
 
   // Web版のみ: ユーザー情報を取得
   useEffect(() => {
@@ -73,6 +54,24 @@ function App() {
       };
     }
   }, [user, projectName, joinRoom, leaveRoom]);
+
+  // セットアップが必要な場合はウィザードを表示
+  if (needsSetup === true) {
+    return <SecretsSetup />;
+  }
+
+  // ロード中
+  if (needsSetup === null && !isTauri()) {
+    return (
+      <div className="flex items-center justify-center h-screen w-screen bg-zinc-900 text-zinc-400 text-sm">
+        Loading...
+      </div>
+    );
+  }
+
+  const NAV_ITEMS: { key: Page; label: string }[] = [
+    { key: 'editor', label: t('app.nav.editor') },
+  ];
 
   return (
     <div className="flex flex-col h-screen w-screen bg-zinc-900 text-zinc-200">

@@ -187,7 +187,7 @@ impl SecretsConfig {
     /// Save configuration to a TOML file.
     pub fn save_to_file(&self, path: &Path) -> Result<(), SecretsError> {
         let content = toml::to_string_pretty(self)
-            .map_err(|e| SecretsError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+            .map_err(|e| SecretsError::Io(std::io::Error::other(e)))?;
 
         // Ensure parent directory exists
         if let Some(parent) = path.parent() {

@@ -63,7 +63,7 @@ impl<'a> SecretScope<'a> {
 #[derive(Clone)]
 enum Provider {
     Infisical {
-        client: InfisicalClient,
+        client: Box<InfisicalClient>,
         config: InfisicalConfig,
     },
     AwsSsm {
@@ -89,7 +89,7 @@ impl SecretsManager {
         let cache = Arc::new(SecretCache::new(config.cache_ttl_secs));
 
         Ok(Self {
-            provider: Provider::Infisical { client, config },
+            provider: Provider::Infisical { client: Box::new(client), config },
             cache,
         })
     }
