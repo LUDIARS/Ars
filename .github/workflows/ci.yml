@@ -81,4 +81,4 @@ jobs:
           docker run --rm `
             -v "${PWD}:/workspace" `
             -w /workspace/ars-editor/src-tauri `
-            rust:1-bookworm sh -c "apt-get update && apt-get install -y --no-install-recommends clang libclang-dev cmake > /dev/null 2>&1 && cargo clippy --features web-server --no-default-features --bin ars-web-server -- -D warnings"
+            rust:1-bookworm sh -c "rustup component add clippy && apt-get update && apt-get install -y --no-install-recommends clang libclang-dev cmake > /dev/null 2>&1 && cargo clippy --features web-server --no-default-features --bin ars-web-server -- -D warnings"
