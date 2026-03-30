@@ -11,7 +11,6 @@ use crate::surrealdb_client::SurrealClient;
 #[derive(Clone)]
 pub struct AppState {
     pub secrets: SecretsManager,
-    pub surreal: SurrealClient,
     pub redis: RedisClient,
     // Repository trait objects
     pub project_repo: Arc<dyn ProjectRepository>,
@@ -29,12 +28,18 @@ impl AppState {
         let secrets = SecretsManager::discover().await
             .map_err(|e| format!("Failed to initialize secrets manager: {}", e))?;
 
-        // Infrastructure secrets — fetched on-demand but needed for DB init
-        let surreal_data_dir = secrets
-            .get_or_default("SURREALDB_DATA_DIR", SecretScope::Shared, &default_surreal_dir())
+        // SurrealDB — connect to external instance via HTTP
+        let surreal_url = secrets
+            .get_or_default("SURREALDB_URL", SecretScope::Shared, "http://localhost:8000")
             .await;
-        let surreal = SurrealClient::new(&surreal_data_dir).await
-            .map_err(|e| format!("Failed to initialize SurrealDB: {}", e))?;
+        let surreal_user = secrets
+            .get_or_default("SURREALDB_USER", SecretScope::Shared, "root")
+            .await;
+        let surreal_pass = secrets
+            .get_or_default("SURREALDB_PASS", SecretScope::Shared, "root")
+            .await;
+        let surreal = SurrealClient::new(&surreal_url, &surreal_user, &surreal_pass).await
+            .map_err(|e| format!("Failed to connect to SurrealDB: {}", e))?;
 
         let redis_url = secrets
             .get_or_default("REDIS_URL", SecretScope::Shared, "redis://127.0.0.1:6379")
@@ -45,13 +50,12 @@ impl AppState {
         let project_repo: Arc<dyn ProjectRepository> =
             Arc::new(SurrealProjectRepository::new(surreal.clone()));
         let user_repo: Arc<dyn UserRepository> =
-            Arc::new(SurrealUserRepository::new(surreal.clone()));
+            Arc::new(SurrealUserRepository::new(surreal));
         let session_repo: Arc<dyn SessionRepository> =
             Arc::new(RedisSessionRepository::new(redis.clone()));
 
         Ok(Self {
             secrets,
-            surreal,
             redis,
             project_repo,
             user_repo,
@@ -84,12 +88,4 @@ impl AppState {
     pub async fn is_https(&self) -> bool {
         self.github_redirect_uri().await.starts_with("https://")
     }
-}
-
-fn default_surreal_dir() -> String {
-    let base = dirs_next::data_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("ars")
-        .join("surrealdb");
-    base.to_string_lossy().to_string()
 }

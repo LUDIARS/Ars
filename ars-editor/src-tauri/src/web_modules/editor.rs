@@ -77,11 +77,11 @@ async fn api_cloud_save_project(
 ) -> Result<Json<()>, (StatusCode, String)> {
     let user = auth::extract_user(&state, &jar).await?;
     state
-        .surreal
-        .save_project(&user.id, &req.project_id, &req.project)
+        .project_repo
+        .save(&user.id, &req.project_id, &req.project)
         .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
+        .map(|_| Json(()))
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
 #[derive(Deserialize)]
@@ -97,10 +97,10 @@ async fn api_cloud_load_project(
 ) -> Result<Json<Project>, (StatusCode, String)> {
     let user = auth::extract_user(&state, &jar).await?;
     state
-        .surreal
-        .load_project(&user.id, &q.project_id)
+        .project_repo
+        .load(&user.id, &q.project_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .map(Json)
         .ok_or((StatusCode::NOT_FOUND, "Project not found".to_string()))
 }
@@ -111,11 +111,11 @@ async fn api_cloud_list_projects(
 ) -> Result<Json<Vec<crate::models::ProjectSummary>>, (StatusCode, String)> {
     let user = auth::extract_user(&state, &jar).await?;
     state
-        .surreal
-        .list_user_projects(&user.id)
+        .project_repo
+        .list(&user.id)
         .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
 async fn api_cloud_delete_project(
@@ -125,11 +125,11 @@ async fn api_cloud_delete_project(
 ) -> Result<Json<()>, (StatusCode, String)> {
     let user = auth::extract_user(&state, &jar).await?;
     state
-        .surreal
-        .delete_project(&user.id, &project_id)
+        .project_repo
+        .delete(&user.id, &project_id)
         .await
         .map(|_| Json(()))
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
 // ========== Git project management APIs ==========

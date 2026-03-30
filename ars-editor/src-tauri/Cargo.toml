@@ -34,7 +34,6 @@ web-server = [
     "dep:dirs",
     "dep:futures",
     "dep:dashmap",
-    "dep:surrealdb",
     "dep:redis",
     "dep:ars-secrets",
 ]
@@ -80,7 +79,5 @@ dirs = { version = "6", optional = true }
 # Collaboration (WebSocket + shared state)
 futures = { version = "0.3", optional = true }
 dashmap = { version = "6", optional = true }
-# SurrealDB (graph DB: users, projects)
-surrealdb = { version = "2", optional = true, features = ["kv-rocksdb"] }
 # Redis (session management)
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }

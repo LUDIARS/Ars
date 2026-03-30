@@ -3,7 +3,7 @@
 #
 # 統合Webサーバー（Editor + Collaboration）を起動します。
 # Redis: セッション管理
-# SurrealDB (embedded): ユーザー・プロジェクト（グラフDB）
+# SurrealDB: ユーザー・プロジェクト（グラフDB）— 外部サービスとして起動
 #
 # 使用方法:
 #   docker compose up -d        # サービス起動
@@ -41,6 +41,17 @@ services:
     command: redis-server --appendonly yes
     restart: unless-stopped
 
+  surrealdb:
+    image: surrealdb/surrealdb:v2
+    platform: ${DOCKER_PLATFORM:-linux/arm64}
+    container_name: ars-surrealdb
+    ports:
+      - "${SURREALDB_PORT:-8000}:8000"
+    volumes:
+      - surrealdb-data:/data
+    command: start --user ${SURREALDB_USER:-root} --pass ${SURREALDB_PASS:-root} rocksdb:/data/database.db
+    restart: unless-stopped
+
   ars:
     image: ghcr.io/ludiars/ars:${IMAGE_TAG:-latest}
     build:
@@ -62,8 +73,10 @@ services:
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-}
     depends_on:
       - redis
+      - surrealdb
     restart: unless-stopped
 
 volumes:
   ars-data:
   redis-data:
+  surrealdb-data:

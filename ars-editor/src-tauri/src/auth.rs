@@ -122,14 +122,14 @@ pub async fn github_callback(
     let now = Utc::now().to_rfc3339();
 
     // Find or create user
-    let user = match state.surreal.get_user_by_github_id(gh_user.id).await {
+    let user = match state.user_repo.get_by_provider_id("github", &gh_user.id.to_string()).await {
         Ok(Some(mut existing)) => {
             existing.login = gh_user.login;
             existing.display_name = gh_user.name.unwrap_or_else(|| existing.login.clone());
             existing.avatar_url = gh_user.avatar_url;
             existing.email = gh_user.email;
             existing.updated_at = now.clone();
-            state.surreal.put_user(&existing).await
+            state.user_repo.put(&existing).await
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update user: {}", e)))?;
             existing
         }
@@ -144,7 +144,7 @@ pub async fn github_callback(
                 created_at: now.clone(),
                 updated_at: now.clone(),
             };
-            state.surreal.put_user(&new_user).await
+            state.user_repo.put(&new_user).await
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create user: {}", e)))?;
             new_user
         }
@@ -253,8 +253,8 @@ pub async fn extract_user(state: &AppState, jar: &CookieJar) -> Result<User, (St
     }
 
     state
-        .surreal
-        .get_user(&session.user_id)
+        .user_repo
+        .get(&session.user_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("User lookup failed: {}", e)))?
         .ok_or((StatusCode::UNAUTHORIZED, "User not found".to_string()))
