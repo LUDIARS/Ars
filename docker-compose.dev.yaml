@@ -31,5 +31,16 @@ services:
     command: redis-server --appendonly yes
     restart: unless-stopped
 
+  surrealdb:
+    image: surrealdb/surrealdb:v2
+    container_name: ars-surrealdb-dev
+    ports:
+      - "${SURREALDB_PORT:-8000}:8000"
+    volumes:
+      - surrealdb-dev-data:/data
+    command: start --user ${SURREALDB_USER:-root} --pass ${SURREALDB_PASS:-root} rocksdb:/data/database.db
+    restart: unless-stopped
+
 volumes:
   redis-dev-data:
+  surrealdb-dev-data:
