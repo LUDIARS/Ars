@@ -1,0 +1,72 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Integration Tests
+    runs-on: self-hosted
+    timeout-minutes: 30
+
+    # ── Infisical シークレットは self-hosted 環境に配置済み ──
+    # secrets.toml を ~/.config/ars/secrets.toml または ./secrets.toml に配置すること
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── インクリメンタルビルド: フロントエンド ──
+      - name: Install frontend dependencies
+        working-directory: ars-editor
+        run: npm ci --prefer-offline
+
+      - name: Build frontend (incremental)
+        working-directory: ars-editor
+        run: npm run build
+
+      # ── インクリメンタルビルド: バックエンド (cargo は差分ビルド) ──
+      - name: Build web server (incremental)
+        working-directory: ars-editor/src-tauri
+        run: cargo build --features web-server --no-default-features --bin ars-web-server
+
+      # ── テスト準備 ──
+      - name: Install test dependencies
+        working-directory: tests/integration
+        run: npm ci --prefer-offline
+
+      - name: Ensure Playwright chromium
+        working-directory: tests/integration
+        run: npx playwright install chromium
+
+      # ── テスト実行 ──
+      - name: Run integration tests
+        working-directory: tests/integration
+        env:
+          CI: true
+          ARS_SERVER_CMD: ../../ars-editor/src-tauri/target/debug/ars-web-server ../../ars-editor/dist 15173
+          CERNERE_URL: http://localhost:18080
+        run: npx playwright test
+
+      # ── アーティファクト ──
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: tests/integration/playwright-report/
+          retention-days: 7
+
+      - name: Upload test traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: tests/integration/test-results/
+          retention-days: 7
