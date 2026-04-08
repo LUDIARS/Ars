@@ -133,37 +133,80 @@ Ars/
 
 > OS 別の詳細: [Windows](spec/setup-windows.md) / [Linux arm64](spec/setup-linux-arm64.md)
 
-### クイックスタート
+共通の初期手順:
 
 ```bash
 git clone https://github.com/LUDIARS/Ars.git
 cd Ars/ars-editor
 npm install
-npx tauri dev       # デスクトップアプリ (開発)
+```
+
+---
+
+### デスクトップ版 (Tauri)
+
+ネイティブアプリ。WebView2 でフロントエンドを描画し、Rust バックエンドがローカルファイル I/O を行う。
+
+```bash
+# 開発 (ホットリロード)
+npx tauri dev
+
+# ビルド (インストーラー生成)
+npx tauri build
+# → src-tauri/target/release/bundle/ に .msi / .app / .deb が生成
 ```
 
 初回起動時は Rust のコンパイルに数分かかります。
 
-### ビルド
+WebView2 の依存のため、**OS 固有のシステムライブラリが必要**です（上記参照）。
+
+---
+
+### Web 版 (Axum)
+
+ブラウザからアクセスする Web サーバー。Axum (Rust) がフロントエンド静的ファイル配信 + API + WebSocket コラボレーションを担当。
 
 ```bash
-# デスクトップアプリ
-cd ars-editor && npx tauri build
-# → ars-editor/src-tauri/target/release/bundle/
+# フロントエンドビルド (Vite)
+npm run build
 
-# Web サーバー
-cd ars-editor && npm run build && npm run serve:web
+# バックエンドビルド (Rust/Axum)
+npm run build:web-server
+
+# 起動
+npm run serve:web
+# → http://localhost:5173
 ```
 
-### Docker
+`CERNERE_URL` 環境変数で Cernere サーバーの接続先を指定（デフォルト: `http://localhost:8080`）。
+
+#### 開発 (ホットリロード)
 
 ```bash
-docker compose up -d           # GHCR イメージで起動
-docker compose up -d --build   # ローカルビルド
+# バックエンド (cargo watch で自動リビルド)
+npm run dev:server
+
+# フロントエンド (別ターミナル、Vite HMR)
+npm run dev
+```
+
+#### Docker
+
+```bash
+docker compose up -d              # GHCR イメージで起動
+docker compose up -d --build      # ローカルビルド (2段: Vite → Cargo)
 ```
 
 `http://localhost:5173` でアクセスできます。
-Cernere サーバーが `CERNERE_URL` で到達可能であること。
+
+#### npm scripts 一覧
+
+| スクリプト | 内容 |
+|-----------|------|
+| `npm run build` | フロントエンドビルド (Vite → `dist/`) |
+| `npm run build:web-server` | バックエンドビルド (Cargo → `ars-web-server` バイナリ) |
+| `npm run serve:web` | ビルド済みバックエンドを起動 (`dist/` を配信) |
+| `npm run dev:server` | バックエンド開発 (cargo watch + ホットリロード) |
 
 ## 開発ツール
 
