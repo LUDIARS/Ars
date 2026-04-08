@@ -44,9 +44,13 @@ Layer 1 ─ Domain Model + Repository Trait (ars-core)
 |  | App 版 (Tauri) | Web 版 (Axum) |
 |---|---|---|
 | ユーザー | シングル | マルチ |
-| 永続化 | ローカルファイル (`~/.ars/`) | DynamoDB |
-| 認証 | 永続セッション | TTL 付きセッション (7 日) |
+| 永続化 | ローカルファイル (`~/.ars/`) | ローカルファイル (サーバーサイド) |
+| 認証 | Cernere (永続セッション) | Cernere (TTL 付きセッション) |
 | モジュール間通信 | EventBus | リクエスト独立 |
+
+### 認証・プロジェクト管理
+
+認証・ユーザー管理・プロジェクト永続化は [Cernere](https://github.com/LUDIARS/Cernere) に委譲しています。Ars 自体は AWS SDK / DynamoDB / Redis を持たず、Cernere の HTTP API 経由で操作します。
 
 ## 技術スタック
 
@@ -57,8 +61,7 @@ Layer 1 ─ Domain Model + Repository Trait (ars-core)
 | ノードエディタ | @xyflow/react 12 |
 | UI | shadcn/ui · Tailwind CSS 4 |
 | 状態管理 | Zustand 5 |
-| DB (Web) | SurrealDB (embedded) / DynamoDB |
-| キャッシュ | Redis |
+| 認証 | Cernere (JWT + WebSocket セッション) |
 | CI/CD | GitHub Actions |
 | コンテナ | Docker (multi-stage) |
 
@@ -67,10 +70,11 @@ Layer 1 ─ Domain Model + Repository Trait (ars-core)
 ```
 Ars/
 ├── crates/
-│   ├── ars-core/            # Layer 1: ドメインモデル · trait · EventBus
+│   ├── ars-core/            # Layer 1: ドメインモデル · Repository trait · EventBus
 │   ├── ars-project/         # Layer 2: プロジェクト I/O · ローカル永続化
 │   ├── ars-codegen/         # AI 支援コード生成 CLI
-│   └── ars-mcp-server/      # MCP Server (AI ツール連携)
+│   ├── ars-mcp-server/      # MCP Server (AI ツール連携)
+│   └── ars-secrets/         # シークレット管理 (Infisical)
 ├── ars-editor/
 │   ├── src/                 # React フロントエンド
 │   │   ├── features/        #   node-editor, scene-manager, behavior-editor, etc.
@@ -82,15 +86,16 @@ Ars/
 │   │   └── locales/         #   i18n (ja / en)
 │   └── src-tauri/           # Tauri / Axum バックエンド (Layer 3)
 │       └── src/
-│           ├── commands/    #   Tauri コマンド
-│           ├── models/      #   データモデル
-│           ├── auth.rs      #   GitHub OAuth
-│           ├── collab.rs    #   WebSocket コラボレーション
-│           ├── git_ops.rs   #   Git 操作
-│           └── web_server.rs#   Axum エントリ
+│           ├── app_state.rs    # AppState (Cernere クライアント)
+│           ├── cernere_auth.rs # JWT 検証
+│           ├── cernere_client.rs # Cernere HTTP クライアント
+│           ├── collab.rs       # WebSocket コラボレーション
+│           ├── git_ops.rs      # Git 操作
+│           └── web_server.rs   # Axum エントリ
 ├── tools/
 │   ├── ars-codegen/         # コード生成 CLI (TypeScript)
 │   └── ars-mcp-server/      # MCP Server (TypeScript)
+├── tests/                   # Playwright 統合テスト
 ├── spec/                    # 設計書・仕様書
 ├── Dockerfile
 ├── docker-compose.yaml
@@ -103,6 +108,7 @@ Ars/
 |---|---|---|
 | `ars-core` | ドメインモデル · Repository trait · EventBus | 実装済み |
 | `ars-project` | プロジェクト I/O · ローカル永続化 | 実装済み |
+| `ars-secrets` | シークレット管理 (Infisical) | 実装済み |
 | `ars-codegen` | AI コード生成 CLI | 実装中 |
 | `ars-mcp-server` | MCP Server (AI ツール連携) | 実装中 |
 
@@ -157,6 +163,7 @@ docker compose up -d --build   # ローカルビルド
 ```
 
 `http://localhost:5173` でアクセスできます。
+Cernere サーバーが `CERNERE_URL` で到達可能であること。
 
 ## 開発ツール
 
@@ -170,6 +177,14 @@ cd tools/ars-codegen && npm install && npm run build
 cd tools/ars-mcp-server && npm install && npm run build
 ```
 
+## テスト
+
+```bash
+# 統合テスト (Playwright)
+npx playwright install
+npx playwright test
+```
+
 ## ドキュメント
 
 | ドキュメント | 内容 |
@@ -178,7 +193,6 @@ cd tools/ars-mcp-server && npm install && npm run build
 | [モジュール詳細設計](spec/modules/detail.md) | 各モジュールの API・型定義・実装方針 |
 | [設計書 & 実装計画](spec/plan.md) | ドメインモデル・画面設計・実装ステップ |
 | [プラットフォーム定義](spec/platforms.md) | 対応プラットフォームの言語・規約・ビルド方式 |
-| [環境変数セットアップ](spec/env-setup.md) | Web サーバーモードの環境設定 |
 
 ## ライセンス
 
