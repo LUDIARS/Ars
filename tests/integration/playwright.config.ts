@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Ars 結合テスト - Playwright 設定
@@ -9,13 +10,10 @@ import path from 'node:path';
  * 2. Ars Web Server (port 15173) - CERNERE_URL をモックに向けて起動
  */
 
-const ext = process.platform === 'win32' ? '.exe' : '';
-const serverBin = path.resolve(
-  __dirname,
-  '../../ars-editor/src-tauri/target/debug',
-  `ars-web-server${ext}`,
-);
-const distDir = path.resolve(__dirname, '../../ars-editor/dist');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const startServerScript = path.resolve(__dirname, 'start-server.mjs');
 
 export default defineConfig({
   testDir: './specs',
@@ -49,7 +47,7 @@ export default defineConfig({
     },
     {
       command: process.env.ARS_SERVER_CMD
-        ?? `"${serverBin}" "${distDir}" 15173`,
+        ?? `node ${startServerScript} 15173`,
       port: 15173,
       reuseExistingServer: !process.env.CI,
       env: {
