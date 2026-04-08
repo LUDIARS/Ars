@@ -1,14 +1,31 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/hooks/useI18n';
 import type { DomainFlowNode } from '../types';
 import { DOMAIN_NODE_COLORS } from '../types';
+import { useDomainDiagramContext } from './DomainDiagramContext';
 
 export const DomainNode = memo(function DomainNode({
   data,
   selected,
 }: NodeProps<DomainFlowNode>) {
   const c = DOMAIN_NODE_COLORS;
+  const { t } = useI18n();
+  const { setFocusActorId } = useDomainDiagramContext();
+
+  const handleDetail = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setFocusActorId(data.actorId);
+    },
+    [data.actorId, setFocusActorId],
+  );
+
+  const detailLabel =
+    t('domainDiagram.detail') === 'domainDiagram.detail'
+      ? 'Detail'
+      : t('domainDiagram.detail');
 
   return (
     <div
@@ -66,6 +83,14 @@ export const DomainNode = memo(function DomainNode({
             {data.subSceneName}
           </div>
         )}
+
+        {/* Detail button */}
+        <button
+          onClick={handleDetail}
+          className="w-full mt-1 text-[11px] text-green-300 hover:text-white bg-green-800/40 hover:bg-green-700/60 px-2 py-1 rounded transition-colors text-center"
+        >
+          {detailLabel}
+        </button>
       </div>
 
       {/* Handles */}

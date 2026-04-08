@@ -50,6 +50,22 @@ export interface SceneRefNodeData extends Record<string, unknown> {
   sceneName: string;
 }
 
+/** Actor detail node — expanded center node in detail view */
+export interface ActorDetailNodeData extends Record<string, unknown> {
+  actorId: string;
+  name: string;
+  isRoot: boolean;
+  childCount: number;
+  subSceneName: string | null;
+  /** All components grouped by category */
+  componentsByCategory: {
+    category: string;
+    components: { name: string; taskNames: string[]; variableNames: string[] }[];
+  }[];
+  /** Sequence step names */
+  sequenceStepNames: string[];
+}
+
 // ---------------------------------------------------------------------------
 // Flow node type aliases
 // ---------------------------------------------------------------------------
@@ -59,11 +75,14 @@ export type ModuleFlowNode = Node<ModuleNodeData, 'module'>;
 export type UIFlowNode = Node<UINodeData, 'uiComponent'>;
 export type SceneRefFlowNode = Node<SceneRefNodeData, 'sceneRef'>;
 
+export type ActorDetailFlowNode = Node<ActorDetailNodeData, 'actorDetail'>;
+
 export type AnyDiagramNode =
   | DomainFlowNode
   | ModuleFlowNode
   | UIFlowNode
-  | SceneRefFlowNode;
+  | SceneRefFlowNode
+  | ActorDetailFlowNode;
 
 // ---------------------------------------------------------------------------
 // Edge data types

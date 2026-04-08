@@ -568,6 +568,8 @@
   },
   "domainDiagram": {
     "emptyPrompt": "Select a scene to view the domain diagram",
+    "detail": "Detail",
+    "back": "Back",
     "layer": {
       "domain": "Domain",
       "system": "System",
@@ -576,7 +578,8 @@
     "description": {
       "domain": "Shows how domains (actors) message each other — who sends what to whom. Scene transitions are shown as dashed links.",
       "system": "Shows how system/logic modules attach to domains — which functions affect which domain, and what they do.",
-      "ui": "Shows which UI components display which domain information — what data the UI reads from each domain."
+      "ui": "Shows which UI components display which domain information — what data the UI reads from each domain.",
+      "detail": "Detail view — all objects attached to this actor: components, connections, tasks, variables, and scene transitions."
     }
   },
   "common": {
