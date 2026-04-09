@@ -47,9 +47,10 @@ export function NodeCanvas() {
   const setSelectedNodes = useEditorStore((s) => s.setSelectedNodes);
   const sendCursor = useCollabStore((s) => s.sendCursor);
   const collabConnected = useCollabStore((s) => s.connected);
+  const selectedEdgeId = useEditorStore((s) => s.selectedEdgeId);
+  const setSelectedEdge = useEditorStore((s) => s.setSelectedEdge);
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance<AnyFlowNode> | null>(null);
   const [flowClickPos, setFlowClickPos] = useState<{ x: number; y: number } | null>(null);
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [fabOpen, setFabOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -87,13 +88,13 @@ export function NodeCanvas() {
   }, [setSelectedNodes]);
 
   const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
-    setSelectedEdgeId(edge.id);
+    setSelectedEdge(edge.id);
   }, []);
 
   const cancelMessageCreation = useEditorStore((s) => s.cancelMessageCreation);
   const onPaneClick = useCallback(() => {
     closeContextMenu();
-    setSelectedEdgeId(null);
+    setSelectedEdge(null);
     setFabOpen(false);
     cancelMessageCreation();
   }, [closeContextMenu, cancelMessageCreation]);
@@ -154,7 +155,10 @@ export function NodeCanvas() {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        onConnect={(connection) => {
+          const newId = onConnect(connection);
+          if (newId) setSelectedEdge(newId);
+        }}
         onInit={setRfInstance}
         onPaneClick={onPaneClick}
         onContextMenu={onContextMenu}
@@ -188,7 +192,7 @@ export function NodeCanvas() {
           key={selectedEdgeId}
           sceneId={activeScene.id}
           messageId={selectedEdgeId}
-          onClose={() => setSelectedEdgeId(null)}
+          onClose={() => setSelectedEdge(null)}
         />
       )}
 

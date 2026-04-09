@@ -59,7 +59,7 @@ interface ProjectActions {
   instantiatePrefab: (prefabId: string, sceneId: string, position: { x: number; y: number }) => string | null;
 
   // Message actions (domain-to-domain)
-  addMessage: (sceneId: string, message: Omit<Message, 'id'>) => void;
+  addMessage: (sceneId: string, message: Omit<Message, 'id'>) => string;
   removeMessage: (sceneId: string, messageId: string) => void;
   updateMessage: (sceneId: string, messageId: string, updates: Partial<Message>) => void;
 
@@ -157,7 +157,11 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
   },
 
   // Message
-  addMessage: (sceneId, messageData) => set((state) => ({ project: addMessageAction(state.project, sceneId, messageData) })),
+  addMessage: (sceneId, messageData) => {
+    const result = addMessageAction(get().project, sceneId, messageData);
+    set({ project: result.project });
+    return result.id;
+  },
   removeMessage: (sceneId, messageId) => set((state) => ({ project: removeMessageAction(state.project, sceneId, messageId) })),
   updateMessage: (sceneId, messageId, updates) => set((state) => ({ project: updateMessageAction(state.project, sceneId, messageId, updates) })),
 

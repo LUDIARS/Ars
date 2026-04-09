@@ -6,12 +6,14 @@ export function addMessageAction(
   project: Project,
   sceneId: string,
   messageData: Omit<Message, 'id'>,
-): Project {
-  const message: Message = { ...messageData, id: generateId() };
-  return updateScene(project, sceneId, (scene) => ({
+): { project: Project; id: string } {
+  const id = generateId();
+  const message: Message = { ...messageData, id };
+  const updated = updateScene(project, sceneId, (scene) => ({
     ...scene,
     messages: [...scene.messages, message],
   }));
+  return { project: updated, id };
 }
 
 export function removeMessageAction(

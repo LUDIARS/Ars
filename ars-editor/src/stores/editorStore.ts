@@ -30,6 +30,8 @@ interface EditorState {
 
   /** メッセージ作成モード: ターゲット選択中のソースアクターID */
   messageSourceActorId: string | null;
+  /** 選択中のエッジ (MessageEditor 表示用) */
+  selectedEdgeId: string | null;
 
   /** AI code generation state */
   isGenerating: boolean;
@@ -59,6 +61,7 @@ interface EditorState {
 
   startMessageCreation: (sourceActorId: string) => void;
   cancelMessageCreation: () => void;
+  setSelectedEdge: (id: string | null) => void;
 
   /** Start AI code generation, returns an AbortController to cancel it */
   startGeneration: () => AbortController;
@@ -93,6 +96,7 @@ export const useEditorStore = create<EditorState>()((set) => ({
   mobileSceneMenuOpen: false,
   mobileBottomSheetOpen: false,
   messageSourceActorId: null,
+  selectedEdgeId: null,
   isGenerating: false,
   generationAbortController: null,
 
@@ -140,6 +144,7 @@ export const useEditorStore = create<EditorState>()((set) => ({
 
   startMessageCreation: (sourceActorId) => set({ messageSourceActorId: sourceActorId }),
   cancelMessageCreation: () => set({ messageSourceActorId: null }),
+  setSelectedEdge: (id) => set({ selectedEdgeId: id }),
 
   startGeneration: () => {
     const controller = new AbortController();

@@ -280,7 +280,7 @@ export const ActorNode = memo(function ActorNode({ data, selected }: NodeProps<A
             onClick={(e) => {
               e.stopPropagation();
               if (activeSceneId && messageSourceActorId) {
-                addMessage(activeSceneId, {
+                const newId = addMessage(activeSceneId, {
                   sourceDomainId: messageSourceActorId,
                   targetDomainId: nodeData.actorId,
                   name: '',
@@ -289,6 +289,8 @@ export const ActorNode = memo(function ActorNode({ data, selected }: NodeProps<A
                   actionIds: [],
                 });
                 cancelMessageCreation();
+                // 自動的に MessageEditor を開く
+                useEditorStore.getState().setSelectedEdge(newId);
               }
             }}
           >
