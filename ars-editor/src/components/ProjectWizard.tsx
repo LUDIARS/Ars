@@ -65,6 +65,7 @@ function createActor(name: string, role: Actor['role'], x: number, y: number): A
     requirements: { overview: [], goals: [], role: [], behavior: [] },
     actorStates: [],
     flexibleContent: '',
+    displays: [],
     position: { x, y },
     subSceneId: null,
   };
@@ -118,7 +119,7 @@ const templates: ProjectTemplate[] = [
 
       // Add a Player actor to the game scene
       const player = createActor('Player', 'actor', 400, 200);
-      player.requirements = { overview: 'プレイヤーキャラクター', goals: 'ユーザー入力に応じて動作する', role: '主人公', behavior: '移動・操作' };
+      player.requirements = { overview: ['プレイヤーキャラクター'], goals: ['ユーザー入力に応じて動作する'], role: ['主人公'], behavior: ['移動・操作'] };
       gameScene.actors[player.id] = player;
 
       // Basic components (project-level, not attached to actors)
@@ -190,7 +191,7 @@ const templates: ProjectTemplate[] = [
 
       // Add some actors to Home
       const header = createActor('Header', 'actor', 250, 150);
-      header.requirements = { overview: 'ヘッダーUI', goals: 'ページ上部に表示', role: 'UI Container', behavior: 'テキストとレイアウト表示' };
+      header.requirements = { overview: ['ヘッダーUI'], goals: ['ページ上部に表示'], role: ['UI Container'], behavior: ['テキストとレイアウト表示'] };
       homeScene.actors[header.id] = header;
 
       const components: Record<string, Component> = {

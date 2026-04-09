@@ -318,7 +318,7 @@ function buildDetailView(
           actorId: target.id,
           name: target.name,
           actorType: (target.actorType ?? 'simple') as ActorType,
-          overview: target.requirements?.overview ?? '',
+          overview: target.requirements?.overview?.join(' / ') ?? '',
           isRoot: target.id === activeScene.rootActorId,
           subSceneName: target.subSceneId
             ? project.scenes[target.subSceneId]?.name ?? null
@@ -358,7 +358,7 @@ function buildDetailView(
           actorId: source.id,
           name: source.name,
           actorType: (source.actorType ?? 'simple') as ActorType,
-          overview: source.requirements?.overview ?? '',
+          overview: source.requirements?.overview?.join(' / ') ?? '',
           isRoot: source.id === activeScene.rootActorId,
           subSceneName: source.subSceneId
             ? project.scenes[source.subSceneId]?.name ?? null
