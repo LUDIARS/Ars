@@ -3,6 +3,7 @@
 
 export type { Action } from './Action';
 export type { ActionType } from './ActionType';
+export type { ConcreteAction } from './ConcreteAction';
 export type { Actor } from './Actor';
 export type { ActorState } from './ActorState';
 export type { Component } from './Component';

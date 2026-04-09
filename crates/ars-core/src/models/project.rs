@@ -211,13 +211,25 @@ pub enum ActionType {
     Event,
 }
 
+/// アクションの具体実装
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ConcreteAction {
+    pub id: String,
+    /// 具体クラス名
+    pub name: String,
+    /// 実装の説明
+    #[serde(default)]
+    pub description: String,
+}
+
 /// ゲームに変化を与える行動クラス定義
-/// インタフェースまたは基底クラスを持つ
+/// 「抽象」(インタフェース / 基底) と「具体」(実装) の両面を持つ
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct Action {
     pub id: String,
-    /// アクション名 (クラス名)
+    /// アクション名
     pub name: String,
     /// アクションの種別
     #[serde(rename = "actionType", default)]
@@ -225,9 +237,19 @@ pub struct Action {
     /// 説明
     #[serde(default)]
     pub description: String,
+
+    // ── 抽象 (インタフェース / 基底定義) ──
     /// インターフェース / 基底クラス名
     #[serde(rename = "baseClass", default)]
     pub base_class: String,
+    /// 抽象メソッド / 契約 (シグネチャの箇条書き)
+    #[serde(rename = "abstractMethods", default)]
+    pub abstract_methods: Vec<String>,
+
+    // ── 具体 (実装) ──
+    /// 具体的な実装クラスのリスト
+    #[serde(default)]
+    pub concretes: Vec<ConcreteAction>,
 }
 
 /// ドメイン間のメッセージ定義

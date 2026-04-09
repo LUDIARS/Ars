@@ -4,6 +4,7 @@
 export type {
   Action,
   ActionType,
+  ConcreteAction,
   Actor,
   ActorState,
   Component,

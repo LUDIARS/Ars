@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { useProjectStore } from '@/stores/projectStore';
+import type { Action, ConcreteAction } from '@/types/domain';
 import type { ActionType } from '@/types/generated/ActionType';
+import { generateId } from '@/lib/utils';
 
 const ACTION_TYPE_LABELS: Record<ActionType, { label: string; color: string }> = {
   interface: { label: 'Interface', color: 'var(--accent)' },
@@ -27,6 +29,8 @@ export function ActionListView() {
       actionType: 'interface',
       description: '',
       baseClass: '',
+      abstractMethods: [],
+      concretes: [],
     });
     setEditingId(id);
   }, [activeSceneId, addAction]);
@@ -67,145 +71,209 @@ export function ActionListView() {
             「+ Action」で追加してください。
           </div>
         ) : (
-          actions.map((action) => {
-            const isEditing = editingId === action.id;
-            const typeInfo = ACTION_TYPE_LABELS[action.actionType];
-
-            return (
-              <div
-                key={action.id}
-                className="rounded-lg p-3"
-                style={{
-                  background: 'var(--bg-surface)',
-                  border: isEditing ? '1px solid var(--accent)' : '1px solid var(--border)',
-                }}
-              >
-                {isEditing ? (
-                  <ActionEditForm
-                    action={action}
-                    sceneId={activeSceneId!}
-                    onSave={(updates) => {
-                      updateAction(activeSceneId!, action.id, updates);
-                      setEditingId(null);
-                    }}
-                    onCancel={() => setEditingId(null)}
-                  />
-                ) : (
-                  <div
-                    className="cursor-pointer"
-                    onClick={() => setEditingId(action.id)}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                        {action.name}
-                      </span>
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                        style={{
-                          color: typeInfo.color,
-                          background: `color-mix(in srgb, ${typeInfo.color} 15%, transparent)`,
-                          border: `1px solid color-mix(in srgb, ${typeInfo.color} 30%, transparent)`,
-                        }}
-                      >
-                        {typeInfo.label}
-                      </span>
-                    </div>
-                    {action.baseClass && (
-                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        extends <span style={{ color: 'var(--purple)' }}>{action.baseClass}</span>
-                      </div>
-                    )}
-                    {action.description && (
-                      <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                        {action.description}
-                      </div>
-                    )}
-                    {/* メッセージとの紐付き表示 */}
-                    {activeScene && (() => {
-                      const linked = activeScene.messages.filter(m => m.actionIds.includes(action.id));
-                      if (linked.length === 0) return null;
-                      return (
-                        <div className="text-[10px] mt-1.5 flex gap-1 flex-wrap">
-                          {linked.map(m => (
-                            <span
-                              key={m.id}
-                              className="px-1.5 py-0.5 rounded"
-                              style={{ background: 'var(--bg-surface-2)', color: 'var(--text-muted)' }}
-                            >
-                              {m.name || '(unnamed)'}
-                            </span>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                {/* Delete */}
-                {!isEditing && (
-                  <div className="flex justify-end mt-2">
-                    <button
-                      className="text-[9px] px-1.5 py-0.5 rounded"
-                      style={{
-                        color: 'var(--red)',
-                        background: 'transparent',
-                        border: '1px solid var(--border)',
-                        fontSize: '9px',
-                        padding: '2px 6px',
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (action.name && !confirm(`「${action.name}」を削除しますか？`)) return;
-                        removeAction(activeSceneId!, action.id);
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })
+          actions.map((action) => (
+            <ActionCard
+              key={action.id}
+              action={action}
+              scene={activeScene}
+              sceneId={activeSceneId!}
+              isEditing={editingId === action.id}
+              onEdit={() => setEditingId(action.id)}
+              onSave={(updates) => {
+                updateAction(activeSceneId!, action.id, updates);
+                setEditingId(null);
+              }}
+              onCancel={() => setEditingId(null)}
+              onDelete={() => {
+                if (action.name && !confirm(`「${action.name}」を削除しますか？`)) return;
+                removeAction(activeSceneId!, action.id);
+              }}
+            />
+          ))
         )}
       </div>
     </div>
   );
 }
 
-// ── Inline Edit Form ──────────────────────────────────────
+// ── Action Card ──────────────────────────────────────
+
+interface ActionCardProps {
+  action: Action;
+  scene: { messages: Array<{ id: string; name: string; actionIds: string[] }> };
+  sceneId: string;
+  isEditing: boolean;
+  onEdit: () => void;
+  onSave: (updates: Partial<Action>) => void;
+  onCancel: () => void;
+  onDelete: () => void;
+}
+
+function ActionCard({ action, scene, isEditing, onEdit, onSave, onCancel, onDelete }: ActionCardProps) {
+  const typeInfo = ACTION_TYPE_LABELS[action.actionType];
+  const linkedMessages = scene.messages.filter(m => m.actionIds.includes(action.id));
+
+  if (isEditing) {
+    return (
+      <div
+        className="rounded-lg p-3"
+        style={{ background: 'var(--bg-surface)', border: '1px solid var(--accent)' }}
+      >
+        <ActionEditForm action={action} onSave={onSave} onCancel={onCancel} />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="rounded-lg p-3 cursor-pointer transition-colors"
+      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+      onClick={onEdit}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{action.name}</span>
+        <span
+          className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+          style={{
+            color: typeInfo.color,
+            background: `color-mix(in srgb, ${typeInfo.color} 15%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${typeInfo.color} 30%, transparent)`,
+          }}
+        >
+          {typeInfo.label}
+        </span>
+      </div>
+
+      {action.description && (
+        <div className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>{action.description}</div>
+      )}
+
+      {/* 抽象 (Abstract) */}
+      <div className="mb-2 rounded p-2" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+        <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--purple)' }}>
+          抽象 (Interface)
+        </div>
+        {action.baseClass && (
+          <div className="text-xs" style={{ color: 'var(--text)' }}>
+            <span style={{ color: 'var(--text-muted)' }}>class: </span>
+            <span style={{ color: 'var(--purple)' }}>{action.baseClass}</span>
+          </div>
+        )}
+        {action.abstractMethods.length > 0 ? (
+          <div className="mt-1">
+            {action.abstractMethods.map((m, i) => (
+              <div key={i} className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                {m}
+              </div>
+            ))}
+          </div>
+        ) : !action.baseClass ? (
+          <div className="text-[11px] italic" style={{ color: 'var(--text-muted)' }}>未定義</div>
+        ) : null}
+      </div>
+
+      {/* 具体 (Concrete) */}
+      <div className="rounded p-2" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+        <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--green)' }}>
+          具体 (Implementations)
+        </div>
+        {action.concretes.length > 0 ? (
+          <div className="space-y-1">
+            {action.concretes.map((c) => (
+              <div key={c.id} className="text-xs">
+                <span style={{ color: 'var(--green)' }}>{c.name}</span>
+                {c.description && <span style={{ color: 'var(--text-muted)' }}> — {c.description}</span>}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-[11px] italic" style={{ color: 'var(--text-muted)' }}>実装なし</div>
+        )}
+      </div>
+
+      {/* Linked messages */}
+      {linkedMessages.length > 0 && (
+        <div className="text-[10px] mt-2 flex gap-1 flex-wrap">
+          {linkedMessages.map(m => (
+            <span
+              key={m.id}
+              className="px-1.5 py-0.5 rounded"
+              style={{ background: 'var(--bg-surface-2)', color: 'var(--text-muted)' }}
+            >
+              {m.name || '(unnamed msg)'}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Delete */}
+      <div className="flex justify-end mt-2">
+        <button
+          className="text-[9px] rounded"
+          style={{ color: 'var(--red)', background: 'transparent', border: '1px solid var(--border)', padding: '2px 6px' }}
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Edit Form ────────────────────────────────────────
 
 function ActionEditForm({
   action,
-  sceneId,
   onSave,
   onCancel,
 }: {
-  action: { id: string; name: string; actionType: ActionType; description: string; baseClass: string };
-  sceneId: string;
-  onSave: (updates: { name: string; actionType: ActionType; description: string; baseClass: string }) => void;
+  action: Action;
+  onSave: (updates: Partial<Action>) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState(action.name);
   const [actionType, setActionType] = useState<ActionType>(action.actionType);
   const [description, setDescription] = useState(action.description);
   const [baseClass, setBaseClass] = useState(action.baseClass);
-  // sceneId is available for future use (e.g., linking to messages)
-  void sceneId;
+  const [abstractMethods, setAbstractMethods] = useState(action.abstractMethods.join('\n'));
+  const [concretes, setConcretes] = useState<ConcreteAction[]>(action.concretes);
+
+  const addConcrete = () => {
+    setConcretes([...concretes, { id: generateId(), name: '', description: '' }]);
+  };
+
+  const updateConcrete = (id: string, updates: Partial<ConcreteAction>) => {
+    setConcretes(concretes.map(c => c.id === id ? { ...c, ...updates } : c));
+  };
+
+  const removeConcrete = (id: string) => {
+    setConcretes(concretes.filter(c => c.id !== id));
+  };
+
+  const handleSave = () => {
+    onSave({
+      name,
+      actionType,
+      description,
+      baseClass,
+      abstractMethods: abstractMethods.split('\n').map(s => s.trim()).filter(Boolean),
+      concretes,
+    });
+  };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {/* Name */}
       <input
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Action name..."
-        className="w-full"
-        style={{ fontSize: '0.85rem' }}
         autoFocus
       />
 
-      {/* Type selector */}
+      {/* Type */}
       <div className="flex gap-1.5">
         {(['interface', 'usecase', 'event'] as ActionType[]).map((t) => {
           const info = ACTION_TYPE_LABELS[t];
@@ -227,16 +295,6 @@ function ActionEditForm({
         })}
       </div>
 
-      {/* Base class */}
-      <input
-        type="text"
-        value={baseClass}
-        onChange={(e) => setBaseClass(e.target.value)}
-        placeholder="Interface / Base class (e.g. IAction)"
-        className="w-full"
-        style={{ fontSize: '0.8rem' }}
-      />
-
       {/* Description */}
       <textarea
         value={description}
@@ -244,22 +302,89 @@ function ActionEditForm({
         placeholder="説明..."
         rows={2}
         className="w-full resize-none"
-        style={{ fontSize: '0.8rem' }}
       />
 
-      {/* Actions */}
+      {/* ── 抽象 ── */}
+      <div className="rounded p-2.5" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+        <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--purple)' }}>
+          抽象 (Interface / Base)
+        </div>
+        <input
+          type="text"
+          value={baseClass}
+          onChange={(e) => setBaseClass(e.target.value)}
+          placeholder="Interface / Base class (e.g. IAction)"
+          className="mb-2"
+        />
+        <label className="text-[10px] mb-1 block" style={{ color: 'var(--text-muted)' }}>
+          メソッド / 契約 (1行1つ)
+        </label>
+        <textarea
+          value={abstractMethods}
+          onChange={(e) => setAbstractMethods(e.target.value)}
+          placeholder="Execute(target: Entity): void&#10;CanExecute(): bool"
+          rows={3}
+          className="w-full resize-none font-mono text-xs"
+        />
+      </div>
+
+      {/* ── 具体 ── */}
+      <div className="rounded p-2.5" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--green)' }}>
+            具体 (Implementations)
+          </div>
+          <button
+            onClick={addConcrete}
+            className="text-[10px] px-2 py-0.5 rounded"
+            style={{ color: 'var(--green)', border: '1px solid var(--border)', background: 'transparent' }}
+          >
+            + 追加
+          </button>
+        </div>
+        {concretes.length === 0 ? (
+          <div className="text-[11px] italic" style={{ color: 'var(--text-muted)' }}>
+            「+ 追加」で具体実装を定義
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {concretes.map((c) => (
+              <div key={c.id} className="flex gap-2 items-start">
+                <div className="flex-1 space-y-1">
+                  <input
+                    type="text"
+                    value={c.name}
+                    onChange={(e) => updateConcrete(c.id, { name: e.target.value })}
+                    placeholder="クラス名 (e.g. SwordAttack)"
+                    style={{ fontSize: '0.8rem' }}
+                  />
+                  <input
+                    type="text"
+                    value={c.description}
+                    onChange={(e) => updateConcrete(c.id, { description: e.target.value })}
+                    placeholder="説明..."
+                    style={{ fontSize: '0.75rem' }}
+                  />
+                </div>
+                <button
+                  onClick={() => removeConcrete(c.id)}
+                  className="text-[9px] px-1 py-0.5 rounded shrink-0 mt-1"
+                  style={{ color: 'var(--red)', border: '1px solid var(--border)', background: 'transparent' }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Save / Cancel */}
       <div className="flex justify-end gap-2">
-        <button
-          onClick={onCancel}
-          style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
-        >
+        <button onClick={onCancel} style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}>
           Cancel
         </button>
-        <button
-          onClick={() => onSave({ name, actionType, description, baseClass })}
-          className="primary"
-          style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
-        >
+        <button onClick={handleSave} className="primary" style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}>
           Save
         </button>
       </div>
