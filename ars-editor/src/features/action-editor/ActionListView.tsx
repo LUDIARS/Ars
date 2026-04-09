@@ -12,7 +12,6 @@ export function ActionListView() {
   const updateAction = useProjectStore((s) => s.updateAction);
 
   const [editingId, setEditingId] = useState<string | null>(null);
-
   const actions = activeScene ? Object.values(activeScene.actions) : [];
 
   const handleAdd = useCallback(() => {
@@ -21,8 +20,7 @@ export function ActionListView() {
       name: 'NewAction',
       actionType: 'interface',
       description: '',
-      baseClass: '',
-      abstractMethods: [],
+      behaviors: [],
       concretes: [],
     });
     setEditingId(id);
@@ -67,7 +65,6 @@ export function ActionListView() {
               key={action.id}
               action={action}
               scene={activeScene}
-              sceneId={activeSceneId!}
               isEditing={editingId === action.id}
               onEdit={() => setEditingId(action.id)}
               onSave={(updates) => {
@@ -100,7 +97,6 @@ function ActionCard({
 }: {
   action: Action;
   scene: { messages: Array<{ id: string; name: string; actionIds: string[] }> };
-  sceneId: string;
   isEditing: boolean;
   onEdit: () => void;
   onSave: (updates: Partial<Action>) => void;
@@ -126,32 +122,23 @@ function ActionCard({
       style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
       onClick={onEdit}
     >
-      {/* Name + description */}
       <div className="text-sm font-semibold mb-0.5" style={{ color: 'var(--text)' }}>{action.name}</div>
       {action.description && (
         <div className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>{action.description}</div>
       )}
 
-      {/* 抽象 */}
+      {/* なにをするか */}
       <div className="mb-2 rounded p-2" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-        <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--purple)' }}>
-          抽象
+        <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--accent)' }}>
+          なにをするか
         </div>
-        {action.baseClass && (
-          <div className="text-xs" style={{ color: 'var(--text)' }}>
-            <span style={{ color: 'var(--text-muted)' }}>base: </span>
-            <span style={{ color: 'var(--purple)' }}>{action.baseClass}</span>
-          </div>
-        )}
-        {action.abstractMethods.length > 0 ? (
-          <div className="mt-1">
-            {action.abstractMethods.map((m, i) => (
-              <div key={i} className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{m}</div>
-            ))}
-          </div>
-        ) : !action.baseClass ? (
+        {action.behaviors.length > 0 ? (
+          action.behaviors.map((b, i) => (
+            <div key={i} className="text-xs" style={{ color: 'var(--text)' }}>• {b}</div>
+          ))
+        ) : (
           <div className="text-[11px] italic" style={{ color: 'var(--text-muted)' }}>未定義</div>
-        ) : null}
+        )}
       </div>
 
       {/* 具体 */}
@@ -160,20 +147,17 @@ function ActionCard({
           具体
         </div>
         {action.concretes.length > 0 ? (
-          <div className="space-y-0.5">
-            {action.concretes.map((c) => (
-              <div key={c.id} className="text-xs">
-                <span style={{ color: 'var(--green)' }}>{c.name}</span>
-                {c.description && <span style={{ color: 'var(--text-muted)' }}> — {c.description}</span>}
-              </div>
-            ))}
-          </div>
+          action.concretes.map((c) => (
+            <div key={c.id} className="text-xs">
+              <span style={{ color: 'var(--green)' }}>{c.name}</span>
+              {c.description && <span style={{ color: 'var(--text-muted)' }}> — {c.description}</span>}
+            </div>
+          ))
         ) : (
           <div className="text-[11px] italic" style={{ color: 'var(--text-muted)' }}>実装なし</div>
         )}
       </div>
 
-      {/* Linked messages */}
       {linkedMessages.length > 0 && (
         <div className="text-[10px] mt-2 flex gap-1 flex-wrap">
           {linkedMessages.map(m => (
@@ -182,7 +166,7 @@ function ActionCard({
               className="px-1.5 py-0.5 rounded"
               style={{ background: 'var(--bg-surface-2)', color: 'var(--text-muted)' }}
             >
-              {m.name || '(unnamed msg)'}
+              {m.name || '(unnamed)'}
             </span>
           ))}
         </div>
@@ -214,8 +198,7 @@ function ActionEditForm({
 }) {
   const [name, setName] = useState(action.name);
   const [description, setDescription] = useState(action.description);
-  const [baseClass, setBaseClass] = useState(action.baseClass);
-  const [abstractMethods, setAbstractMethods] = useState(action.abstractMethods.join('\n'));
+  const [behaviors, setBehaviors] = useState(action.behaviors.join('\n'));
   const [concretes, setConcretes] = useState<ConcreteAction[]>(action.concretes);
 
   const addConcrete = () => {
@@ -232,7 +215,6 @@ function ActionEditForm({
 
   return (
     <div className="space-y-3">
-      {/* Name */}
       <input
         type="text"
         value={name}
@@ -241,7 +223,6 @@ function ActionEditForm({
         autoFocus
       />
 
-      {/* Description */}
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
@@ -250,27 +231,17 @@ function ActionEditForm({
         className="w-full resize-none"
       />
 
-      {/* 抽象 */}
+      {/* なにをするか */}
       <div className="rounded p-2.5" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-        <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--purple)' }}>
-          抽象 (Interface / Base)
+        <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--accent)' }}>
+          なにをするか (1行1つ)
         </div>
-        <input
-          type="text"
-          value={baseClass}
-          onChange={(e) => setBaseClass(e.target.value)}
-          placeholder="Base class (e.g. IAction)"
-          className="mb-2"
-        />
-        <label className="text-[10px] mb-1 block" style={{ color: 'var(--text-muted)' }}>
-          メソッド / 契約 (1行1つ)
-        </label>
         <textarea
-          value={abstractMethods}
-          onChange={(e) => setAbstractMethods(e.target.value)}
-          placeholder="Execute(target: Entity): void&#10;CanExecute(): bool"
-          rows={3}
-          className="w-full resize-none font-mono text-xs"
+          value={behaviors}
+          onChange={(e) => setBehaviors(e.target.value)}
+          placeholder="ターゲットにダメージを与える&#10;攻撃エフェクトを再生する&#10;ヒットログを記録する"
+          rows={4}
+          className="w-full resize-none"
         />
       </div>
 
@@ -325,7 +296,6 @@ function ActionEditForm({
         )}
       </div>
 
-      {/* Save / Cancel */}
       <div className="flex justify-end gap-2">
         <button onClick={onCancel} style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}>
           Cancel
@@ -334,8 +304,7 @@ function ActionEditForm({
           onClick={() => onSave({
             name,
             description,
-            baseClass,
-            abstractMethods: abstractMethods.split('\n').map(s => s.trim()).filter(Boolean),
+            behaviors: behaviors.split('\n').map(s => s.trim()).filter(Boolean),
             concretes,
           })}
           className="primary"

@@ -2,4 +2,4 @@
 import type { ActionType } from "./ActionType";
 import type { ConcreteAction } from "./ConcreteAction";
 
-export type Action = { id: string, name: string, actionType: ActionType, description: string, baseClass: string, abstractMethods: string[], concretes: ConcreteAction[], };
+export type Action = { id: string, name: string, actionType: ActionType, description: string, behaviors: string[], concretes: ConcreteAction[], };

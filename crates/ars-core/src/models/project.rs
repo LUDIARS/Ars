@@ -224,27 +224,24 @@ pub struct ConcreteAction {
 }
 
 /// ゲームに変化を与える行動クラス定義
-/// 「抽象」(インタフェース / 基底) と「具体」(実装) の両面を持つ
+/// 「なにをするか」(振る舞い) と「具体実装」の両面を持つ
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct Action {
     pub id: String,
     /// アクション名
     pub name: String,
-    /// アクションの種別
+    /// アクションの種別 (呼び出し時に使用)
     #[serde(rename = "actionType", default)]
     pub action_type: ActionType,
     /// 説明
     #[serde(default)]
     pub description: String,
 
-    // ── 抽象 (インタフェース / 基底定義) ──
-    /// インターフェース / 基底クラス名
-    #[serde(rename = "baseClass", default)]
-    pub base_class: String,
-    /// 抽象メソッド / 契約 (シグネチャの箇条書き)
-    #[serde(rename = "abstractMethods", default)]
-    pub abstract_methods: Vec<String>,
+    // ── なにをするか (振る舞い定義) ──
+    /// このアクションが行う振る舞いの箇条書き
+    #[serde(default)]
+    pub behaviors: Vec<String>,
 
     // ── 具体 (実装) ──
     /// 具体的な実装クラスのリスト
