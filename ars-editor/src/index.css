@@ -35,6 +35,109 @@ html, body, #root {
 body {
   background-color: var(--bg);
   color: var(--text);
+  line-height: 1.5;
+}
+
+/* ===== Foundation Base Styles (Cernere/Schedula 共通) ===== */
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
+  background: var(--bg-surface-2);
+  color: var(--text);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+button:hover {
+  background: var(--border);
+}
+button.primary {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+button.primary:hover {
+  background: var(--accent-hover);
+}
+button.danger {
+  background: transparent;
+  color: var(--red);
+  border-color: var(--red);
+}
+button.danger:hover {
+  background: rgba(248, 81, 73, 0.15);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 0.875rem;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  width: 100%;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.25);
+}
+
+label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.form-group {
+  margin-bottom: 0.75rem;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+  border: 1px solid;
+}
+.badge.blue {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(88, 166, 255, 0.1);
+}
+.badge.green {
+  color: var(--green);
+  border-color: var(--green);
+  background: rgba(63, 185, 80, 0.1);
+}
+.badge.red {
+  color: var(--red);
+  border-color: var(--red);
+  background: rgba(248, 81, 73, 0.1);
 }
 
 /* React Flow overrides */

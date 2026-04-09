@@ -53,17 +53,18 @@ function MenuDropdown({
     <div ref={ref} className="relative">
       <button
         onClick={onToggle}
-        className="px-3 h-8 text-xs font-medium rounded transition-colors"
+        className="px-4 h-10 text-sm font-medium rounded transition-colors"
         style={{
           color: open ? 'var(--text)' : 'var(--text-muted)',
           background: open ? 'var(--bg-surface-2)' : 'transparent',
+          border: 'none',
         }}
       >
         {label}
       </button>
       {open && (
         <div
-          className="absolute left-0 top-full mt-0.5 py-1 min-w-[200px] rounded-lg shadow-xl z-50"
+          className="absolute left-0 top-full mt-0.5 py-1 min-w-[220px] rounded-lg shadow-xl z-50"
           style={{ background: 'var(--bg-surface-2)', border: '1px solid var(--border)' }}
         >
           {items.map((item, i) => (
@@ -71,9 +72,12 @@ function MenuDropdown({
               <button
                 onClick={() => { item.onClick(); onClose(); }}
                 disabled={item.disabled}
-                className="w-full text-left px-4 py-2 text-xs transition-colors disabled:opacity-30"
+                className="w-full text-left px-4 py-2.5 text-sm transition-colors disabled:opacity-30"
                 style={{
                   color: item.color ?? (item.active ? 'var(--accent)' : 'var(--text)'),
+                  border: 'none',
+                  background: 'transparent',
+                  borderRadius: 0,
                 }}
                 onMouseEnter={(e) => { if (!item.disabled) (e.target as HTMLElement).style.background = 'var(--bg-surface)'; }}
                 onMouseLeave={(e) => { (e.target as HTMLElement).style.background = 'transparent'; }}
@@ -272,7 +276,7 @@ export function Toolbar() {
 
   return (
     <div
-      className="flex items-center h-9 px-1 text-xs"
+      className="flex items-center h-10 px-1 text-sm"
       style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)' }}
     >
       {/* Menu dropdowns */}
@@ -309,11 +313,11 @@ export function Toolbar() {
       <div className="flex-1" />
 
       {/* Project name only — details in StatusBar */}
-      <span className="truncate max-w-[200px] mr-2" style={{ color: 'var(--text-muted)' }}>
+      <span className="truncate max-w-[200px] mr-3 text-sm" style={{ color: 'var(--text-muted)' }}>
         {project.name}
         {isDirty && <span className="ml-1" style={{ color: 'var(--orange)' }}>*</span>}
       </span>
-      {status && <span className="mr-2" style={{ color: 'var(--green)', fontSize: '10px' }}>{status}</span>}
+      {status && <span className="mr-2 text-xs" style={{ color: 'var(--green)' }}>{status}</span>}
 
       {/* Modals */}
       {showProjectManager && <ProjectManager onClose={() => setShowProjectManager(false)} />}
