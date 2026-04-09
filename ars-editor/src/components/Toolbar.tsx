@@ -255,40 +255,21 @@ export function Toolbar() {
   if (isMobile) {
     return (
       <div
-        className="flex items-center gap-0.5 px-1 text-xs relative"
+        className="flex items-center gap-0 px-0.5 text-xs relative"
         style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)', minHeight: '44px' }}
       >
-        <span className="text-xs font-bold text-white mx-2 tracking-wider shrink-0">ARS</span>
-        <button
-          onClick={() => setMobileSceneMenu(true)}
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded transition-colors text-base"
-          style={{ color: 'var(--text)', border: 'none', background: 'transparent' }}
-        >
-          ☰
-        </button>
-        <button
-          onClick={handleSave}
-          className="min-h-[44px] px-3 flex items-center rounded transition-colors"
-          style={{ color: isDirty ? 'var(--orange)' : 'var(--text-muted)', border: 'none', background: 'transparent' }}
-        >
-          {t('toolbar.save')}{isDirty ? '*' : ''}
-        </button>
-        <button
-          onClick={() => { if (isGenerating) abortGeneration(); undo(); markDirty(); }}
-          disabled={!canUndo()}
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded transition-colors disabled:opacity-30"
-          style={{ color: 'var(--text-muted)', border: 'none', background: 'transparent' }}
-        >
-          ↩
-        </button>
-        <button
-          onClick={() => { redo(); markDirty(); }}
-          disabled={!canRedo()}
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded transition-colors disabled:opacity-30"
-          style={{ color: 'var(--text-muted)', border: 'none', background: 'transparent' }}
-        >
-          ↪
-        </button>
+        <span className="text-[10px] font-bold text-white mx-1.5 tracking-wider shrink-0">ARS</span>
+
+        {/* Same menus as desktop */}
+        <MenuDropdown label="File" items={fileItems} open={openMenu === 'file'} onToggle={() => setOpenMenu(openMenu === 'file' ? null : 'file')} onClose={closeMenu} />
+        <MenuDropdown label="Set" items={settingsItems} open={openMenu === 'settings'} onToggle={() => setOpenMenu(openMenu === 'settings' ? null : 'settings')} onClose={closeMenu} />
+        <MenuDropdown label="?" items={helpItems} open={openMenu === 'help'} onToggle={() => setOpenMenu(openMenu === 'help' ? null : 'help')} onClose={closeMenu} />
+
+        <div className="flex-1" />
+
+        {status && <span style={{ color: 'var(--green)' }} className="text-[10px] mr-1">{status}</span>}
+
+        {/* ☰ = Scene drawer + bottom sheet (独自拡張) */}
         <button
           onClick={() => setMobileBottomSheet(!mobileBottomSheetOpen)}
           className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded transition-colors"
@@ -296,8 +277,13 @@ export function Toolbar() {
         >
           ▤
         </button>
-        <div className="flex-1" />
-        {status && <span style={{ color: 'var(--green)' }} className="text-[10px] mr-1">{status}</span>}
+        <button
+          onClick={() => setMobileSceneMenu(true)}
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded transition-colors text-base"
+          style={{ color: 'var(--text)', border: 'none', background: 'transparent' }}
+        >
+          ☰
+        </button>
         {modals}
       </div>
     );
