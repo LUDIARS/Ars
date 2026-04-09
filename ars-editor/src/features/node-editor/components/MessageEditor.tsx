@@ -18,22 +18,22 @@ export function MessageEditor({ sceneId, messageId, onClose }: MessageEditorProp
   const [name, setName] = useState(message?.name ?? '');
   const [description, setDescription] = useState(message?.description ?? '');
   const [messageType, setMessageType] = useState<MessageType>(message?.messageType ?? 'simple');
-  const [actionIds, setActionIds] = useState<string[]>(message?.actionIds ?? []);
+  const [selectedActionId, setSelectedActionId] = useState<string>(message?.actionIds?.[0] ?? '');
 
   if (!message || !scene) return null;
 
   const sourceDomain = scene.actors[message.sourceDomainId];
   const targetDomain = scene.actors[message.targetDomainId];
   const allActions = Object.values(scene.actions ?? {});
+  const selectedAction = selectedActionId ? scene.actions?.[selectedActionId] : null;
 
   const handleSave = () => {
-    updateMessage(sceneId, messageId, { name, description, messageType, actionIds });
-  };
-
-  const toggleAction = (actionId: string) => {
-    setActionIds((prev) =>
-      prev.includes(actionId) ? prev.filter((id) => id !== actionId) : [...prev, actionId],
-    );
+    updateMessage(sceneId, messageId, {
+      name,
+      description,
+      messageType,
+      actionIds: selectedActionId ? [selectedActionId] : [],
+    });
   };
 
   return (
@@ -120,56 +120,34 @@ export function MessageEditor({ sceneId, messageId, onClose }: MessageEditorProp
 
       {/* Action 紐付け (Interface 時のみ表示) */}
       {messageType === 'interface' && (
-        <div className="mb-3 rounded p-3" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-          <label className="text-[10px] uppercase tracking-wider block mb-2" style={{ color: 'var(--accent)' }}>
-            Actions (抽象)
+        <div className="mb-3">
+          <label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: 'var(--accent)' }}>
+            Action (抽象)
           </label>
           {allActions.length === 0 ? (
-            <div className="text-xs italic" style={{ color: 'var(--text-muted)' }}>
+            <div className="text-xs italic py-1" style={{ color: 'var(--text-muted)' }}>
               Actions タブでアクションを定義してください
             </div>
           ) : (
-            <div className="space-y-1">
-              {allActions.map((action) => {
-                const isLinked = actionIds.includes(action.id);
-                return (
-                  <button
-                    key={action.id}
-                    onClick={() => toggleAction(action.id)}
-                    className="w-full text-left px-2.5 py-2 rounded text-xs transition-colors flex items-start gap-2"
-                    style={{
-                      background: isLinked ? 'rgba(88,166,255,0.1)' : 'transparent',
-                      border: isLinked ? '1px solid var(--accent)' : '1px solid var(--border)',
-                      color: 'var(--text)',
-                    }}
-                  >
-                    <span
-                      className="w-4 h-4 rounded border flex items-center justify-center shrink-0 mt-0.5 text-[10px]"
-                      style={{
-                        borderColor: isLinked ? 'var(--accent)' : 'var(--border)',
-                        background: isLinked ? 'var(--accent)' : 'transparent',
-                        color: isLinked ? '#000' : 'transparent',
-                      }}
-                    >
-                      ✓
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium">{action.name}</div>
-                      {action.behaviors.length > 0 && (
-                        <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                          {action.behaviors.slice(0, 2).map((b, i) => (
-                            <div key={i}>• {b}</div>
-                          ))}
-                          {action.behaviors.length > 2 && (
-                            <div>+{action.behaviors.length - 2} more</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              <select
+                value={selectedActionId}
+                onChange={(e) => setSelectedActionId(e.target.value)}
+                className="w-full"
+              >
+                <option value="">-- 選択なし --</option>
+                {allActions.map((action) => (
+                  <option key={action.id} value={action.id}>{action.name}</option>
+                ))}
+              </select>
+              {selectedAction && selectedAction.behaviors.length > 0 && (
+                <div className="mt-1.5 rounded p-2 text-[11px]" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                  {selectedAction.behaviors.map((b, i) => (
+                    <div key={i}>• {b}</div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -178,7 +156,7 @@ export function MessageEditor({ sceneId, messageId, onClose }: MessageEditorProp
       <div className="flex justify-between">
         <button
           onClick={() => {
-            const hasData = !!(name.trim() || description.trim() || actionIds.length > 0);
+            const hasData = !!(name.trim() || description.trim() || selectedActionId);
             if (hasData) {
               if (!confirm('このメッセージにはデータがあります。削除しますか？')) return;
             }
