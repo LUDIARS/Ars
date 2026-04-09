@@ -29,4 +29,14 @@ export function safeLoadProject(project: Project, path?: string): void {
 
   // 再度 markSaved (loadProject で project が変わり markDirty が呼ばれる可能性があるため)
   useEditorStore.getState().markSaved(path);
+
+  // 最後に開いたプロジェクトを記憶
+  if (path) {
+    localStorage.setItem('ars:lastProjectPath', path);
+  }
+}
+
+/** 最後に開いたプロジェクトのパスを取得 */
+export function getLastProjectPath(): string | null {
+  return localStorage.getItem('ars:lastProjectPath');
 }
