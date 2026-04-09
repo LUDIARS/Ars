@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import type { Actor } from '@/types/domain';
 
+export type EditorViewTab = 'scene' | 'actions' | 'data' | 'ui';
+
 interface EditorState {
+  activeViewTab: EditorViewTab;
   selectedNodeIds: string[];
   contextMenu: { x: number; y: number } | null;
   componentPickerTarget: string | null;
@@ -52,6 +55,7 @@ interface EditorState {
   setMobileSceneMenu: (open: boolean) => void;
   setMobileBottomSheet: (open: boolean) => void;
   setAutoSave: (enabled: boolean) => void;
+  setActiveViewTab: (tab: EditorViewTab) => void;
 
   startMessageCreation: (sourceActorId: string) => void;
   cancelMessageCreation: () => void;
@@ -66,6 +70,7 @@ interface EditorState {
 
 export const useEditorStore = create<EditorState>()((set) => ({
   selectedNodeIds: [],
+  activeViewTab: 'scene' as EditorViewTab,
   contextMenu: null,
   componentPickerTarget: null,
   componentEditorTarget: null,
@@ -131,6 +136,7 @@ export const useEditorStore = create<EditorState>()((set) => ({
   setMobileSceneMenu: (open) => set({ mobileSceneMenuOpen: open }),
   setMobileBottomSheet: (open) => set({ mobileBottomSheetOpen: open }),
   setAutoSave: (enabled) => set({ autoSaveEnabled: enabled }),
+  setActiveViewTab: (tab) => set({ activeViewTab: tab }),
 
   startMessageCreation: (sourceActorId) => set({ messageSourceActorId: sourceActorId }),
   cancelMessageCreation: () => set({ messageSourceActorId: null }),
