@@ -4,6 +4,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useAuthStore } from '@/stores/authStore';
 import { clearHistory } from '@/stores/historyMiddleware';
 import * as authApi from '@/lib/auth-api';
+import * as backend from '@/lib/backend';
 import { generateId } from '@/lib/utils';
 import type { Project, Actor, Scene, Component } from '@/types/domain';
 
@@ -43,9 +44,10 @@ function createSceneWithRoot(sceneName: string): Scene {
         name: 'Root',
         role: 'actor',
         actorType: 'simple',
-        requirements: { overview: '', goals: '', role: '', behavior: '' },
+        requirements: { overview: [], goals: [], role: [], behavior: [] },
         actorStates: [],
         flexibleContent: '',
+        displays: [],
         position: { x: 250, y: 50 },
         subSceneId: null,
       },
@@ -60,9 +62,10 @@ function createActor(name: string, role: Actor['role'], x: number, y: number): A
     name,
     role,
     actorType: 'simple',
-    requirements: { overview: '', goals: '', role: '', behavior: '' },
+    requirements: { overview: [], goals: [], role: [], behavior: [] },
     actorStates: [],
     flexibleContent: '',
+    displays: [],
     position: { x, y },
     subSceneId: null,
   };
@@ -116,7 +119,7 @@ const templates: ProjectTemplate[] = [
 
       // Add a Player actor to the game scene
       const player = createActor('Player', 'actor', 400, 200);
-      player.requirements = { overview: 'プレイヤーキャラクター', goals: 'ユーザー入力に応じて動作する', role: '主人公', behavior: '移動・操作' };
+      player.requirements = { overview: ['プレイヤーキャラクター'], goals: ['ユーザー入力に応じて動作する'], role: ['主人公'], behavior: ['移動・操作'] };
       gameScene.actors[player.id] = player;
 
       // Basic components (project-level, not attached to actors)
@@ -188,7 +191,7 @@ const templates: ProjectTemplate[] = [
 
       // Add some actors to Home
       const header = createActor('Header', 'actor', 250, 150);
-      header.requirements = { overview: 'ヘッダーUI', goals: 'ページ上部に表示', role: 'UI Container', behavior: 'テキストとレイアウト表示' };
+      header.requirements = { overview: ['ヘッダーUI'], goals: ['ページ上部に表示'], role: ['UI Container'], behavior: ['テキストとレイアウト表示'] };
       homeScene.actors[header.id] = header;
 
       const components: Record<string, Component> = {
@@ -253,7 +256,16 @@ export function ProjectWizard({ onClose }: ProjectWizardProps) {
       const project = selectedTemplate.create(projectName.trim());
       loadProject(project);
       clearHistory();
-      setProjectPath(null);
+
+      // ローカルファイルに自動保存
+      try {
+        const defaultDir = await backend.getDefaultProjectPath();
+        const localPath = `${defaultDir}/${projectName.trim().replace(/\s+/g, '_')}.json`;
+        await backend.saveProject(localPath, project);
+        setProjectPath(localPath);
+      } catch {
+        setProjectPath(null);
+      }
 
       if (withGitHub && user) {
         const repoName = projectName.trim().replace(/\s+/g, '-').toLowerCase();
