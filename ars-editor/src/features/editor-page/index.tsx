@@ -18,6 +18,7 @@ import { generateId } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import * as backend from '@/lib/backend';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { StatusBar } from '@/components/StatusBar';
 import { safeLoadProject, getLastProjectPath } from '@/lib/project-loader';
 
 export function EditorPage() {
@@ -220,6 +221,8 @@ export function EditorPage() {
         {componentPickerTarget && <ComponentPicker />}
         {sequenceEditorTarget && <SequenceEditor />}
         {subScenePickerTarget && <SubScenePicker />}
+
+        <StatusBar />
       </div>
     );
   }
@@ -283,6 +286,7 @@ export function EditorPage() {
         {sequenceEditorTarget && <SequenceEditor />}
         {subScenePickerTarget && <SubScenePicker />}
       </div>
+      <StatusBar />
     </div>
   );
 }

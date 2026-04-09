@@ -8,13 +8,11 @@ import { useI18n } from '@/hooks/useI18n';
 import * as backend from '@/lib/backend';
 import * as authApi from '@/lib/auth-api';
 import { safeLoadProject } from '@/lib/project-loader';
-import { UserMenu } from './UserMenu';
 import { ProjectManager } from './ProjectManager';
 import { ProjectWizard } from './ProjectWizard';
 import { ArchetypeWizard } from '@/features/archetype-wizard';
 import { GettingStartedGuide } from './GettingStartedGuide';
 import { ProjectListDialog } from './ProjectListDialog';
-import { useBackendHealth } from '@/hooks/useBackendHealth';
 
 // ── Menu Dropdown ────────────────────────────────────────────
 
@@ -98,7 +96,6 @@ export function Toolbar() {
   const { t } = useI18n();
   const project = useProjectStore((s) => s.project);
   const isDirty = useEditorStore((s) => s.isDirty);
-  const lastSavedAt = useEditorStore((s) => s.lastSavedAt);
   const projectPath = useEditorStore((s) => s.projectPath);
   const markDirty = useEditorStore((s) => s.markDirty);
   const markSaved = useEditorStore((s) => s.markSaved);
@@ -119,7 +116,6 @@ export function Toolbar() {
   const [showProjectList, setShowProjectList] = useState(false);
   const [pushing, setPushing] = useState(false);
   const isMobile = useIsMobile();
-  const backendHealth = useBackendHealth();
 
   const showStatus = (msg: string) => {
     setStatus(msg);
@@ -184,10 +180,6 @@ export function Toolbar() {
       setPushing(false);
     }
   }, [activeGitRepo, project, markSaved, t]);
-
-  const lastSavedLabel = lastSavedAt
-    ? t('toolbar.lastSaved', { time: new Date(lastSavedAt).toLocaleTimeString() })
-    : '';
 
   const closeMenu = useCallback(() => setOpenMenu(null), []);
 
@@ -266,13 +258,6 @@ export function Toolbar() {
           ▤
         </button>
         <div className="flex-1" />
-        <span
-          className={`w-2 h-2 rounded-full mr-1 ${
-            backendHealth === 'ok' ? 'bg-green-500' :
-            backendHealth === 'down' ? 'bg-red-500 animate-pulse' :
-            'bg-zinc-500'
-          }`}
-        />
         {status && <span style={{ color: 'var(--green)' }} className="text-[10px] mr-1">{status}</span>}
         {showProjectManager && <ProjectManager onClose={() => setShowProjectManager(false)} />}
         {showWizard && <ProjectWizard onClose={() => setShowWizard(false)} />}
@@ -323,28 +308,12 @@ export function Toolbar() {
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Status area */}
-      <span
-        className={`w-2 h-2 rounded-full mr-2 ${
-          backendHealth === 'ok' ? 'bg-green-500' :
-          backendHealth === 'down' ? 'bg-red-500 animate-pulse' :
-          'bg-zinc-500'
-        }`}
-        title={backendHealth === 'ok' ? 'Backend: connected' : backendHealth === 'down' ? 'Backend: offline' : 'Checking...'}
-      />
-      {backendHealth === 'down' && (
-        <span className="mr-2" style={{ color: 'var(--red)', fontSize: '10px' }}>Offline</span>
-      )}
-      {lastSavedLabel && !status && backendHealth !== 'down' && (
-        <span className="mr-2" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>{lastSavedLabel}</span>
-      )}
+      {/* Project name only — details in StatusBar */}
       <span className="truncate max-w-[200px] mr-2" style={{ color: 'var(--text-muted)' }}>
         {project.name}
         {isDirty && <span className="ml-1" style={{ color: 'var(--orange)' }}>*</span>}
       </span>
       {status && <span className="mr-2" style={{ color: 'var(--green)', fontSize: '10px' }}>{status}</span>}
-
-      <UserMenu onOpenProjectManager={() => setShowProjectManager(true)} />
 
       {/* Modals */}
       {showProjectManager && <ProjectManager onClose={() => setShowProjectManager(false)} />}
