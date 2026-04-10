@@ -13,6 +13,7 @@ const ELEMENT_TYPES: { type: UIElementType; label: string }[] = [
   { type: 'Text', label: 'Text' },
   { type: 'Image', label: 'Image' },
   { type: 'Button', label: 'Button' },
+  { type: 'Custom', label: 'Custom' },
 ];
 
 function UIElementToolbar() {
@@ -27,8 +28,9 @@ function UIElementToolbar() {
   const handleAdd = (type: UIElementType) => {
     if (!activeSceneId) return;
     // Add as child of selected Panel, otherwise at root
+    const selType = selectedId ? canvas.elements[selectedId]?.type : null;
     const parentId =
-      selectedId && canvas.elements[selectedId]?.type === 'Panel' ? selectedId : null;
+      selectedId && (selType === 'Panel' || selType === 'Custom') ? selectedId : null;
     addElement(activeSceneId, type, parentId);
   };
 

@@ -143,7 +143,7 @@ function AddElementButton({ sceneId, parentId }: { sceneId: string; parentId: st
   const addElement = useUIViewStore((s) => s.addElement);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const types: UIElementType[] = ['Panel', 'Text', 'Image', 'Button'];
+  const types: UIElementType[] = ['Panel', 'Text', 'Image', 'Button', 'Custom'];
 
   return (
     <div className="relative">
@@ -215,7 +215,7 @@ export function UIHierarchy() {
       if (!activeSceneId) return;
       // Add as child of selected element if it's a container type (Panel)
       const parentId =
-        selectedId && canvas.elements[selectedId]?.type === 'Panel' ? selectedId : null;
+        selectedId && (canvas.elements[selectedId]?.type === 'Panel' || canvas.elements[selectedId]?.type === 'Custom') ? selectedId : null;
       addElement(activeSceneId, type, parentId);
     },
     [activeSceneId, selectedId, canvas.elements, addElement],

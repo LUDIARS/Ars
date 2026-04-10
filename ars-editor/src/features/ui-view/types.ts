@@ -1,6 +1,6 @@
 // UI View types — uGUI-inspired layout system for Ars editor
 
-export type UIElementType = 'Panel' | 'Text' | 'Image' | 'Button';
+export type UIElementType = 'Panel' | 'Text' | 'Image' | 'Button' | 'Custom';
 
 export interface Vec2 {
   x: number;
@@ -41,6 +41,8 @@ export interface UIElementProps {
   buttonColor?: string;
   hoverColor?: string;
   textColor?: string;
+  // Custom
+  typeName?: string;
 }
 
 export interface UIElement {
@@ -108,13 +110,18 @@ export const ELEMENT_DEFAULTS: Record<UIElementType, { rect: Partial<RectTransfo
     rect: { width: 160, height: 48 },
     props: { label: 'Button', buttonColor: '#3b82f6', textColor: '#ffffff', borderRadius: 6, fontSize: 14 },
   },
+  Custom: {
+    rect: { width: 240, height: 160 },
+    props: { typeName: 'MyCustomUI', borderColor: 'var(--purple)', backgroundColor: 'transparent' },
+  },
 };
 
 export const ELEMENT_TYPE_ICONS: Record<UIElementType, string> = {
-  Panel: '\u25A1',  // □
+  Panel: '\u25A1',   // □
   Text: 'T',
-  Image: '\u25A3',  // ▣
+  Image: '\u25A3',   // ▣
   Button: '\u25A2',  // ▢
+  Custom: '\u2726',  // ✦
 };
 
 // ── Helpers ─────────────────────────────────────────

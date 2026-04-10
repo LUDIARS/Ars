@@ -380,6 +380,46 @@ function ButtonProps({
   );
 }
 
+function CustomProps({
+  element,
+  sceneId,
+}: {
+  element: UIElement;
+  sceneId: string;
+}) {
+  const updateProps = useUIViewStore((s) => s.updateProps);
+  const update = useCallback(
+    (p: Partial<UIElementProps>) => updateProps(sceneId, element.id, p),
+    [sceneId, element.id, updateProps],
+  );
+
+  return (
+    <Section title="Custom">
+      <TextInput
+        label="Type Name"
+        value={element.props.typeName ?? ''}
+        onChange={(v) => update({ typeName: v })}
+      />
+      <ColorInput
+        label="Border"
+        value={element.props.borderColor ?? '#bc8cff'}
+        onChange={(v) => update({ borderColor: v })}
+      />
+      <ColorInput
+        label="Background"
+        value={element.props.backgroundColor ?? 'transparent'}
+        onChange={(v) => update({ backgroundColor: v })}
+      />
+      <NumberInput
+        label="R"
+        value={element.props.borderRadius ?? 0}
+        onChange={(v) => update({ borderRadius: v })}
+        min={0}
+      />
+    </Section>
+  );
+}
+
 // ── Main Inspector Panel ────────────────────────────
 
 export function UIInspector() {
@@ -552,10 +592,11 @@ export function UIInspector() {
       {element.type === 'Text' && <TextProps element={element} sceneId={sceneId} />}
       {element.type === 'Image' && <ImageProps element={element} sceneId={sceneId} />}
       {element.type === 'Button' && <ButtonProps element={element} sceneId={sceneId} />}
+      {element.type === 'Custom' && <CustomProps element={element} sceneId={sceneId} />}
 
       {/* Actions */}
       <div className="px-3 py-3 flex flex-col gap-2">
-        {element.type === 'Panel' && (
+        {(element.type === 'Panel' || element.type === 'Custom') && (
           <button
             className="w-full text-xs py-1.5 rounded transition-colors"
             style={{

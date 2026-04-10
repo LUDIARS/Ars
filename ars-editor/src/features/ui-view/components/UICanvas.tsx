@@ -95,6 +95,46 @@ function renderElementVisual(element: UIElement) {
           {props.label ?? 'Button'}
         </div>
       );
+    case 'Custom': {
+      const borderCol = props.borderColor ?? 'var(--purple)';
+      return (
+        <div
+          className="absolute inset-0 overflow-hidden"
+          style={{
+            backgroundColor: props.backgroundColor ?? 'transparent',
+            border: `2px dashed ${borderCol}`,
+            borderRadius: props.borderRadius ?? 0,
+            opacity: props.opacity ?? 1,
+          }}
+        >
+          {/* Type name badge (top-left) */}
+          <div
+            className="absolute flex items-center gap-1 px-1.5 py-0.5"
+            style={{
+              top: 0,
+              left: 0,
+              background: borderCol,
+              color: '#fff',
+              fontSize: 10,
+              fontWeight: 'bold',
+              lineHeight: 1,
+              borderBottomRightRadius: 4,
+              maxWidth: '100%',
+            }}
+          >
+            <span style={{ fontSize: 8 }}>{'\u2726'}</span>
+            <span className="truncate">{props.typeName || element.name}</span>
+          </div>
+          {/* Center label showing instance name */}
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            style={{ color: borderCol, fontSize: 12, opacity: 0.6 }}
+          >
+            {element.name}
+          </div>
+        </div>
+      );
+    }
     default:
       return null;
   }
