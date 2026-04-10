@@ -48,7 +48,7 @@ export function AppLayout() {
 
   // Expose language settings toggle for Toolbar to use
   return (
-    <div className="flex flex-col h-screen w-screen" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+    <div className="flex flex-col" style={{ background: 'var(--bg)', color: 'var(--text)', height: '100dvh', width: '100%' }}>
       <div className="flex-1 overflow-hidden">
         <Outlet />
       </div>
