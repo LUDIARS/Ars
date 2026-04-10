@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Project, Actor, Message, Component, Scene, Requirements, ActorState, Display } from '@/types/domain';
+import type { Project, Actor, Action, Message, Component, Scene, Requirements, ActorState, Display } from '@/types/domain';
 
 import { createSceneAction, deleteSceneAction, renameSceneAction } from './sceneActions';
 import {
@@ -11,7 +11,11 @@ import {
   addDisplayAction, removeDisplayAction, updateDisplayAction,
 } from './actorActions';
 import { createPrefabAction, deletePrefabAction, renamePrefabAction, instantiatePrefabAction } from './prefabActions';
-import { addMessageAction, removeMessageAction, updateMessageAction, upsertComponentAction, deleteComponentAction } from './connectionActions';
+import {
+  addMessageAction, removeMessageAction, updateMessageAction,
+  addActionAction, removeActionAction, updateActionAction,
+  upsertComponentAction, deleteComponentAction,
+} from './connectionActions';
 
 interface ProjectActions {
   // Scene actions
@@ -55,9 +59,14 @@ interface ProjectActions {
   instantiatePrefab: (prefabId: string, sceneId: string, position: { x: number; y: number }) => string | null;
 
   // Message actions (domain-to-domain)
-  addMessage: (sceneId: string, message: Omit<Message, 'id'>) => void;
+  addMessage: (sceneId: string, message: Omit<Message, 'id'>) => string;
   removeMessage: (sceneId: string, messageId: string) => void;
   updateMessage: (sceneId: string, messageId: string, updates: Partial<Message>) => void;
+
+  // Action CRUD (Scene-level)
+  addAction: (sceneId: string, action: Omit<Action, 'id'>) => string;
+  removeAction: (sceneId: string, actionId: string) => void;
+  updateAction: (sceneId: string, actionId: string, updates: Partial<Action>) => void;
 
   // Component actions
   upsertComponent: (component: Component) => void;
@@ -148,9 +157,22 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
   },
 
   // Message
-  addMessage: (sceneId, messageData) => set((state) => ({ project: addMessageAction(state.project, sceneId, messageData) })),
+  addMessage: (sceneId, messageData) => {
+    const result = addMessageAction(get().project, sceneId, messageData);
+    set({ project: result.project });
+    return result.id;
+  },
   removeMessage: (sceneId, messageId) => set((state) => ({ project: removeMessageAction(state.project, sceneId, messageId) })),
   updateMessage: (sceneId, messageId, updates) => set((state) => ({ project: updateMessageAction(state.project, sceneId, messageId, updates) })),
+
+  // Action
+  addAction: (sceneId, actionData) => {
+    const result = addActionAction(get().project, sceneId, actionData);
+    set({ project: result.project });
+    return result.id;
+  },
+  removeAction: (sceneId, actionId) => set((state) => ({ project: removeActionAction(state.project, sceneId, actionId) })),
+  updateAction: (sceneId, actionId, updates) => set((state) => ({ project: updateActionAction(state.project, sceneId, actionId, updates) })),
 
   // Component
   upsertComponent: (component) => set((state) => ({ project: upsertComponentAction(state.project, component) })),
@@ -166,7 +188,8 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
           k,
           {
             ...scene,
-            messages: scene.messages ?? [],
+            messages: (scene.messages ?? []).map((m) => ({ ...m, actionIds: m.actionIds ?? [] })),
+            actions: scene.actions ?? {},
             actors: Object.fromEntries(
               Object.entries(scene.actors).map(([ak, actor]) => [
                 ak,

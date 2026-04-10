@@ -195,6 +195,60 @@ pub enum MessageType {
     Interface,
 }
 
+/// アクションの種別
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default, PartialEq)]
+#[ts(export)]
+pub enum ActionType {
+    /// インターフェース定義
+    #[default]
+    #[serde(rename = "interface")]
+    Interface,
+    /// ユースケース
+    #[serde(rename = "usecase")]
+    UseCase,
+    /// イベント
+    #[serde(rename = "event")]
+    Event,
+}
+
+/// アクションの具体実装
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ConcreteAction {
+    pub id: String,
+    /// 具体クラス名
+    pub name: String,
+    /// 実装の説明
+    #[serde(default)]
+    pub description: String,
+}
+
+/// ゲームに変化を与える行動クラス定義
+/// 「なにをするか」(振る舞い) と「具体実装」の両面を持つ
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct Action {
+    pub id: String,
+    /// アクション名
+    pub name: String,
+    /// アクションの種別 (呼び出し時に使用)
+    #[serde(rename = "actionType", default)]
+    pub action_type: ActionType,
+    /// 説明
+    #[serde(default)]
+    pub description: String,
+
+    // ── なにをするか (振る舞い定義) ──
+    /// このアクションが行う振る舞いの箇条書き
+    #[serde(default)]
+    pub behaviors: Vec<String>,
+
+    // ── 具体 (実装) ──
+    /// 具体的な実装クラスのリスト
+    #[serde(default)]
+    pub concretes: Vec<ConcreteAction>,
+}
+
 /// ドメイン間のメッセージ定義
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -214,6 +268,9 @@ pub struct Message {
     /// メッセージの種別
     #[serde(rename = "messageType", default)]
     pub message_type: MessageType,
+    /// 紐づくアクション ID リスト
+    #[serde(rename = "actionIds", default)]
+    pub action_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -228,6 +285,10 @@ pub struct Scene {
     /// ドメイン間メッセージ
     #[serde(default)]
     pub messages: Vec<Message>,
+    /// アクション定義
+    #[ts(type = "Record<string, Action>")]
+    #[serde(default)]
+    pub actions: HashMap<String, Action>,
 }
 
 // ── Project ─────────────────────────────────────────
@@ -314,6 +375,7 @@ mod tests {
             root_actor_id: "actor-root".to_string(),
             actors: HashMap::new(),
             messages: vec![],
+            actions: HashMap::new(),
         };
         project.scenes.insert(scene.id.clone(), scene);
         project.active_scene_id = Some("scene-1".to_string());
@@ -408,6 +470,7 @@ mod tests {
             name: "TakeDamage".to_string(),
             description: "ダメージを与える".to_string(),
             message_type: MessageType::default(),
+            action_ids: vec![],
         };
         let json = serde_json::to_string(&msg).unwrap();
         let loaded: Message = serde_json::from_str(&json).unwrap();

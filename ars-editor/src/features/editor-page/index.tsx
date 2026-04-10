@@ -18,6 +18,9 @@ import { generateId } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import * as backend from '@/lib/backend';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { StatusBar } from '@/components/StatusBar';
+import { ViewTabs } from '@/components/ViewTabs';
+import { ActionListView } from '@/features/action-editor/ActionListView';
 import { safeLoadProject, getLastProjectPath } from '@/lib/project-loader';
 
 export function EditorPage() {
@@ -41,6 +44,7 @@ export function EditorPage() {
         // ファイルが消えている等 — 無視
       });
   }, []);
+  const activeViewTab = useEditorStore((s) => s.activeViewTab);
   const componentPickerTarget = useEditorStore((s) => s.componentPickerTarget);
   const sequenceEditorTarget = useEditorStore((s) => s.sequenceEditorTarget);
   const subScenePickerTarget = useEditorStore((s) => s.subScenePickerTarget);
@@ -134,14 +138,36 @@ export function EditorPage() {
     onDuplicate: handleDuplicate,
   });
 
+  const renderViewContent = () => {
+    switch (activeViewTab) {
+      case 'scene':
+        return panelVisibility.domainDiagram ? <DomainDiagramCanvas /> : <NodeCanvas />;
+      case 'actions':
+        return <ActionListView />;
+      case 'data':
+        return (
+          <div className="flex-1 flex items-center justify-center" style={{ color: 'var(--text-muted)' }}>
+            Data ビュー (準備中)
+          </div>
+        );
+      case 'ui':
+        return (
+          <div className="flex-1 flex items-center justify-center" style={{ color: 'var(--text-muted)' }}>
+            UI ビュー (準備中)
+          </div>
+        );
+    }
+  };
+
   // --- Mobile Layout ---
   if (isMobile) {
     return (
       <div className="flex flex-col h-full w-full">
         <Toolbar />
+        <ViewTabs />
 
         <div className="flex-1 flex flex-col overflow-hidden relative">
-          {panelVisibility.domainDiagram ? <DomainDiagramCanvas /> : <NodeCanvas />}
+          {renderViewContent()}
 
           {mobileSceneMenuOpen && (
             <div
@@ -220,6 +246,8 @@ export function EditorPage() {
         {componentPickerTarget && <ComponentPicker />}
         {sequenceEditorTarget && <SequenceEditor />}
         {subScenePickerTarget && <SubScenePicker />}
+
+        <StatusBar />
       </div>
     );
   }
@@ -228,6 +256,7 @@ export function EditorPage() {
   return (
     <div className="flex flex-col h-full w-full">
       <Toolbar />
+      <ViewTabs />
       <div className="flex flex-1 overflow-hidden">
         {panelVisibility.sceneManager && (
           <div className="w-60 min-w-[240px] bg-zinc-850 border-r border-zinc-700 flex flex-col" data-help-target="sceneList">
@@ -258,7 +287,7 @@ export function EditorPage() {
         )}
 
         <div className="flex-1 flex flex-col overflow-hidden" data-help-target="nodeCanvas">
-          {panelVisibility.domainDiagram ? <DomainDiagramCanvas /> : <NodeCanvas />}
+          {renderViewContent()}
         </div>
 
         {panelVisibility.preview && (
@@ -283,6 +312,7 @@ export function EditorPage() {
         {sequenceEditorTarget && <SequenceEditor />}
         {subScenePickerTarget && <SubScenePicker />}
       </div>
+      <StatusBar />
     </div>
   );
 }

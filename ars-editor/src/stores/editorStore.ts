@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import type { Actor } from '@/types/domain';
 
+export type EditorViewTab = 'scene' | 'actions' | 'data' | 'ui';
+
 interface EditorState {
+  activeViewTab: EditorViewTab;
   selectedNodeIds: string[];
   contextMenu: { x: number; y: number } | null;
   componentPickerTarget: string | null;
@@ -27,6 +30,8 @@ interface EditorState {
 
   /** メッセージ作成モード: ターゲット選択中のソースアクターID */
   messageSourceActorId: string | null;
+  /** 選択中のエッジ (MessageEditor 表示用) */
+  selectedEdgeId: string | null;
 
   /** AI code generation state */
   isGenerating: boolean;
@@ -52,9 +57,11 @@ interface EditorState {
   setMobileSceneMenu: (open: boolean) => void;
   setMobileBottomSheet: (open: boolean) => void;
   setAutoSave: (enabled: boolean) => void;
+  setActiveViewTab: (tab: EditorViewTab) => void;
 
   startMessageCreation: (sourceActorId: string) => void;
   cancelMessageCreation: () => void;
+  setSelectedEdge: (id: string | null) => void;
 
   /** Start AI code generation, returns an AbortController to cancel it */
   startGeneration: () => AbortController;
@@ -66,6 +73,7 @@ interface EditorState {
 
 export const useEditorStore = create<EditorState>()((set) => ({
   selectedNodeIds: [],
+  activeViewTab: 'scene' as EditorViewTab,
   contextMenu: null,
   componentPickerTarget: null,
   componentEditorTarget: null,
@@ -88,6 +96,7 @@ export const useEditorStore = create<EditorState>()((set) => ({
   mobileSceneMenuOpen: false,
   mobileBottomSheetOpen: false,
   messageSourceActorId: null,
+  selectedEdgeId: null,
   isGenerating: false,
   generationAbortController: null,
 
@@ -131,9 +140,11 @@ export const useEditorStore = create<EditorState>()((set) => ({
   setMobileSceneMenu: (open) => set({ mobileSceneMenuOpen: open }),
   setMobileBottomSheet: (open) => set({ mobileBottomSheetOpen: open }),
   setAutoSave: (enabled) => set({ autoSaveEnabled: enabled }),
+  setActiveViewTab: (tab) => set({ activeViewTab: tab }),
 
   startMessageCreation: (sourceActorId) => set({ messageSourceActorId: sourceActorId }),
   cancelMessageCreation: () => set({ messageSourceActorId: null }),
+  setSelectedEdge: (id) => set({ selectedEdgeId: id }),
 
   startGeneration: () => {
     const controller = new AbortController();

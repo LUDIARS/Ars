@@ -86,14 +86,15 @@ export function useNodeEditor() {
   );
 
   const onConnect = useCallback(
-    (connection: FlowConnection) => {
-      if (!activeScene) return;
-      addMessage(activeScene.id, {
+    (connection: FlowConnection): string | null => {
+      if (!activeScene) return null;
+      return addMessage(activeScene.id, {
         sourceDomainId: connection.source,
         targetDomainId: connection.target,
         name: '',
         description: '',
         messageType: 'simple',
+        actionIds: [],
       });
     },
     [activeScene, addMessage],
