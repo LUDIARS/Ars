@@ -89,7 +89,7 @@ export function NodeCanvas() {
 
   const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
     setSelectedEdge(edge.id);
-  }, []);
+  }, [setSelectedEdge]);
 
   const cancelMessageCreation = useEditorStore((s) => s.cancelMessageCreation);
   const onPaneClick = useCallback(() => {
@@ -97,7 +97,7 @@ export function NodeCanvas() {
     setSelectedEdge(null);
     setFabOpen(false);
     cancelMessageCreation();
-  }, [closeContextMenu, cancelMessageCreation]);
+  }, [closeContextMenu, cancelMessageCreation, setSelectedEdge]);
 
   const handleFabAdd = useCallback((actorType: ActorType) => {
     if (!activeScene) return;
