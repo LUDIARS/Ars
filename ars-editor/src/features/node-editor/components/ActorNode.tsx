@@ -1,7 +1,8 @@
-import { memo, useState, useRef, useCallback } from 'react';
+import { memo, useState, useRef, useCallback, useMemo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { useCollabStore } from '@/stores/collabStore';
 import type { ActorFlowNode } from '../types/nodes';
 import type { ActorType } from '@/types/domain';
 import { ROLE_COLORS, ACTOR_TYPE_COLORS, ACTOR_TYPE_LABELS } from '../types/nodes';
@@ -25,6 +26,24 @@ export const ActorNode = memo(function ActorNode({ data, selected }: NodeProps<A
   const cancelMessageCreation = useEditorStore((s) => s.cancelMessageCreation);
   const addMessage = useProjectStore((s) => s.addMessage);
   const colors = ROLE_COLORS[nodeData.role];
+
+  // 他ユーザーがこのノードを選択中かどうか
+  const presences = useCollabStore((s) => s.presences);
+  const users = useCollabStore((s) => s.users);
+  const collabConnected = useCollabStore((s) => s.connected);
+  const editingUsers = useMemo(() => {
+    if (!collabConnected) return [];
+    const result: Array<{ display_name: string; color: string; avatar_url: string }> = [];
+    for (const [uid, presence] of presences) {
+      if (presence.selected_node_ids.includes(nodeData.actorId)) {
+        const user = users.get(uid);
+        if (user) {
+          result.push({ display_name: user.display_name, color: user.color, avatar_url: user.avatar_url });
+        }
+      }
+    }
+    return result;
+  }, [collabConnected, presences, users, nodeData.actorId]);
 
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
@@ -96,13 +115,14 @@ export const ActorNode = memo(function ActorNode({ data, selected }: NodeProps<A
   return (
     <div
       className={cn(
-        'rounded-lg border-2 min-w-[280px] max-w-[360px] shadow-lg',
+        'rounded-lg border-2 min-w-[280px] max-w-[360px] shadow-lg relative',
         colors.bg,
         colors.border,
         selected && 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900',
         isSource && 'ring-2 ring-blue-400 ring-offset-2 ring-offset-zinc-900',
         isSelectableTarget && 'ring-2 ring-blue-400/50 ring-offset-1 ring-offset-zinc-900 cursor-pointer',
       )}
+      style={editingUsers.length > 0 ? { boxShadow: `0 0 0 2px ${editingUsers[0].color}40, 0 0 12px ${editingUsers[0].color}30` } : undefined}
     >
       {/* Header */}
       <div className={cn('px-3 py-2.5 rounded-t-md flex items-center justify-between', colors.header)}>
@@ -129,6 +149,36 @@ export const ActorNode = memo(function ActorNode({ data, selected }: NodeProps<A
         <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium ml-2 shrink-0', typeColors.badge, typeColors.text)}>
           {ACTOR_TYPE_LABELS[actorType]}
         </span>
+        {/* 操作中ユーザーのアバター */}
+        {editingUsers.length > 0 && (
+          <div className="flex items-center gap-0.5 ml-1.5 shrink-0">
+            {editingUsers.map((eu, i) => (
+              <div key={i} className="relative group/collab">
+                {eu.avatar_url ? (
+                  <img
+                    src={eu.avatar_url}
+                    alt={eu.display_name}
+                    className="w-4 h-4 rounded-full border"
+                    style={{ borderColor: eu.color }}
+                  />
+                ) : (
+                  <div
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
+                    style={{ backgroundColor: eu.color }}
+                  >
+                    {eu.display_name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-1.5 py-0.5 rounded text-[9px] text-white whitespace-nowrap opacity-0 group-hover/collab:opacity-100 transition-opacity pointer-events-none z-50"
+                  style={{ backgroundColor: eu.color }}
+                >
+                  {eu.display_name}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 概要 (単一テキスト) */}

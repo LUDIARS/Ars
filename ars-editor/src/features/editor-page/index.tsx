@@ -24,9 +24,11 @@ import { ActionListView } from '@/features/action-editor/ActionListView';
 import { UIViewLayout } from '@/features/ui-view';
 import { DataViewLayout } from '@/features/data-view';
 import { safeLoadProject, getLastProjectPath } from '@/lib/project-loader';
+import { usePresenceTracker } from '@/hooks/usePresenceTracker';
 
 export function EditorPage() {
   useAutoSave();
+  usePresenceTracker();
 
   // 最後に開いたプロジェクトを自動ロード
   const autoLoadDone = useRef(false);
