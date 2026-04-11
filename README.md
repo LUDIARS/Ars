@@ -197,10 +197,7 @@ npm run serve:web
 #### 開発 (ホットリロード)
 
 ```bash
-# バックエンド (cargo watch で自動リビルド)
-npm run dev:server
-
-# フロントエンド (別ターミナル、Vite HMR)
+# プロジェクトルート (ars/) で実行 — env 設定後、Vite + Axum を同時起動
 npm run dev
 ```
 
@@ -220,7 +217,8 @@ docker compose up -d --build      # ローカルビルド (2段: Vite → Cargo)
 | `npm run build` | フロントエンドビルド (Vite → `dist/`) |
 | `npm run build:web-server` | バックエンドビルド (Cargo → `ars-web-server` バイナリ) |
 | `npm run serve:web` | ビルド済みバックエンドを起動 (`dist/` を配信) |
-| `npm run dev:server` | バックエンド開発 (cargo watch + ホットリロード) |
+| `npm run dev` | env 設定 + Vite + Axum を同時起動 (プロジェクトルートから実行) |
+| `npm run dev:server` | バックエンド開発のみ (cargo watch + ホットリロード) |
 
 ## 開発ツール
 
