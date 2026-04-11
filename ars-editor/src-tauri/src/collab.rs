@@ -40,6 +40,15 @@ pub enum CollabMessage {
         y: f64,
         scene_id: Option<String>,
     },
+    #[serde(rename = "presence")]
+    Presence {
+        user_id: String,
+        scene_id: Option<String>,
+        scene_name: Option<String>,
+        selected_node_ids: Vec<String>,
+        selected_node_names: Vec<String>,
+        view_tab: String,
+    },
     #[serde(rename = "lock")]
     Lock {
         user_id: String,
@@ -55,6 +64,7 @@ pub enum CollabMessage {
     RoomState {
         users: Vec<CollabUser>,
         locks: Vec<LockInfo>,
+        presences: Vec<UserPresence>,
     },
     #[serde(rename = "lock_result")]
     LockResult {
@@ -80,12 +90,23 @@ pub struct LockInfo {
     pub display_name: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserPresence {
+    pub user_id: String,
+    pub scene_id: Option<String>,
+    pub scene_name: Option<String>,
+    pub selected_node_ids: Vec<String>,
+    pub selected_node_names: Vec<String>,
+    pub view_tab: String,
+}
+
 // ========== Room Management ==========
 
 struct Room {
     tx: broadcast::Sender<String>,
     users: DashMap<String, CollabUser>,
     locks: DashMap<String, LockInfo>,
+    presences: DashMap<String, UserPresence>,
 }
 
 impl Room {
@@ -95,6 +116,7 @@ impl Room {
             tx,
             users: DashMap::new(),
             locks: DashMap::new(),
+            presences: DashMap::new(),
         }
     }
 }
@@ -187,7 +209,8 @@ async fn handle_socket(socket: WebSocket, state: CollabState, query: WsQuery) {
     // 現在のルーム状態を送信
     let users: Vec<CollabUser> = room.users.iter().map(|r| r.value().clone()).collect();
     let locks: Vec<LockInfo> = room.locks.iter().map(|r| r.value().clone()).collect();
-    if let Ok(json) = serde_json::to_string(&CollabMessage::RoomState { users, locks }) {
+    let presences: Vec<UserPresence> = room.presences.iter().map(|r| r.value().clone()).collect();
+    if let Ok(json) = serde_json::to_string(&CollabMessage::RoomState { users, locks, presences }) {
         let _ = ws_send(&mut ws_tx, &json).await;
     }
 
@@ -207,12 +230,16 @@ async fn handle_socket(socket: WebSocket, state: CollabState, query: WsQuery) {
     // broadcast → WebSocket 転送タスク
     let send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
-            // 自分のカーソルメッセージは除外
-            if let Ok(CollabMessage::Cursor { user_id: ref uid, .. }) =
-                serde_json::from_str::<CollabMessage>(&msg)
-            {
-                if *uid == user_id_for_send {
-                    continue;
+            // 自分のカーソル・プレゼンスメッセージは除外
+            if let Ok(parsed) = serde_json::from_str::<CollabMessage>(&msg) {
+                match &parsed {
+                    CollabMessage::Cursor { user_id: uid, .. }
+                    | CollabMessage::Presence { user_id: uid, .. } => {
+                        if *uid == user_id_for_send {
+                            continue;
+                        }
+                    }
+                    _ => {}
                 }
             }
             if !ws_send(&mut ws_tx, &msg).await {
@@ -253,7 +280,8 @@ async fn handle_socket(socket: WebSocket, state: CollabState, query: WsQuery) {
         }
     }
 
-    // ユーザーを削除して退出を通知
+    // プレゼンスとユーザーを削除して退出を通知
+    room.presences.remove(&user_id);
     room.users.remove(&user_id);
     if let Ok(json) = serde_json::to_string(&CollabMessage::Leave {
         user_id: user_id.clone(),
@@ -287,6 +315,27 @@ async fn handle_incoming(
         match &mut collab_msg {
             CollabMessage::Cursor { user_id: uid, .. } => {
                 *uid = user_id.to_string();
+            }
+            CollabMessage::Presence {
+                user_id: uid,
+                scene_id,
+                scene_name,
+                selected_node_ids,
+                selected_node_names,
+                view_tab,
+            } => {
+                *uid = user_id.to_string();
+                room.presences.insert(
+                    user_id.to_string(),
+                    UserPresence {
+                        user_id: user_id.to_string(),
+                        scene_id: scene_id.clone(),
+                        scene_name: scene_name.clone(),
+                        selected_node_ids: selected_node_ids.clone(),
+                        selected_node_names: selected_node_names.clone(),
+                        view_tab: view_tab.clone(),
+                    },
+                );
             }
             CollabMessage::Lock {
                 user_id: uid,

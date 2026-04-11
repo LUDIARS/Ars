@@ -107,6 +107,25 @@ export class CollabClient {
     });
   }
 
+  /** プレゼンス情報を送信（どのシーン/ノードを操作中か） */
+  sendPresence(
+    sceneId: string | null,
+    sceneName: string | null,
+    selectedNodeIds: string[],
+    selectedNodeNames: string[],
+    viewTab: string,
+  ) {
+    this.send({
+      type: 'presence',
+      user_id: '', // サーバー側で上書きされる
+      scene_id: sceneId,
+      scene_name: sceneName,
+      selected_node_ids: selectedNodeIds,
+      selected_node_names: selectedNodeNames,
+      view_tab: viewTab,
+    });
+  }
+
   /** ファイルロックを要求 */
   requestLock(resourceId: string, resourceName: string) {
     this.send({

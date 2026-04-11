@@ -15,6 +15,7 @@ import { ArchetypeWizard } from '@/features/archetype-wizard';
 import { GettingStartedGuide } from './GettingStartedGuide';
 import { ProjectListDialog } from './ProjectListDialog';
 import { LanguageSettings } from './LanguageSettings';
+import { CollabPresence } from '@/features/node-editor/components/CollabPresence';
 
 // ── Menu Dropdown ────────────────────────────────────────────
 
@@ -267,7 +268,9 @@ export function Toolbar() {
 
         <div className="flex-1" />
 
-        {status && <span style={{ color: 'var(--green)' }} className="text-[10px] mr-1">{status}</span>}
+        <CollabPresence />
+
+        {status && <span style={{ color: 'var(--green)' }} className="text-[10px] mr-1 ml-1">{status}</span>}
 
         {/* ☰ = Scene drawer + bottom sheet (独自拡張) */}
         <button
@@ -328,6 +331,10 @@ export function Toolbar() {
       />
 
       <div className="flex-1" />
+
+      <CollabPresence />
+
+      <div className="mx-2 h-4 w-px" style={{ background: 'var(--border)' }} />
 
       <span className="truncate max-w-[200px] mr-3 text-sm" style={{ color: 'var(--text-muted)' }}>
         {project.name}

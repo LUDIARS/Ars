@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CollabUser, CursorPosition, LockInfo, CollabMessage } from '@/types/collab';
+import type { CollabUser, CursorPosition, LockInfo, UserPresence, CollabMessage } from '@/types/collab';
 import { collabClient } from '@/lib/collab-client';
 
 interface CollabState {
@@ -8,12 +8,14 @@ interface CollabState {
   users: Map<string, CollabUser>;
   cursors: Map<string, CursorPosition>;
   locks: Map<string, LockInfo>;
+  presences: Map<string, UserPresence>;
 }
 
 interface CollabActions {
   joinRoom: (roomId: string, userId: string, displayName: string, avatarUrl: string) => void;
   leaveRoom: () => void;
   sendCursor: (x: number, y: number, sceneId: string | null) => void;
+  sendPresence: (sceneId: string | null, sceneName: string | null, selectedNodeIds: string[], selectedNodeNames: string[], viewTab: string) => void;
   requestLock: (resourceId: string, resourceName: string) => void;
   releaseLock: (resourceId: string) => void;
   handleMessage: (msg: CollabMessage) => void;
@@ -28,6 +30,7 @@ export const useCollabStore = create<CollabState & CollabActions>()((set, get) =
     users: new Map(),
     cursors: new Map(),
     locks: new Map(),
+    presences: new Map(),
 
     joinRoom: (roomId, userId, displayName, avatarUrl) => {
       // 前の接続をクリーンアップ
@@ -47,6 +50,7 @@ export const useCollabStore = create<CollabState & CollabActions>()((set, get) =
         users: new Map(),
         cursors: new Map(),
         locks: new Map(),
+        presences: new Map(),
       });
     },
 
@@ -62,11 +66,16 @@ export const useCollabStore = create<CollabState & CollabActions>()((set, get) =
         users: new Map(),
         cursors: new Map(),
         locks: new Map(),
+        presences: new Map(),
       });
     },
 
     sendCursor: (x, y, sceneId) => {
       collabClient.sendCursor(x, y, sceneId);
+    },
+
+    sendPresence: (sceneId, sceneName, selectedNodeIds, selectedNodeNames, viewTab) => {
+      collabClient.sendPresence(sceneId, sceneName, selectedNodeIds, selectedNodeNames, viewTab);
     },
 
     requestLock: (resourceId, resourceName) => {
@@ -88,7 +97,13 @@ export const useCollabStore = create<CollabState & CollabActions>()((set, get) =
           for (const l of msg.locks) {
             locks.set(l.resource_id, l);
           }
-          set({ users, locks });
+          const presences = new Map<string, UserPresence>();
+          if (msg.presences) {
+            for (const p of msg.presences) {
+              presences.set(p.user_id, p);
+            }
+          }
+          set({ users, locks, presences });
           break;
         }
         case 'join': {
@@ -107,6 +122,8 @@ export const useCollabStore = create<CollabState & CollabActions>()((set, get) =
           users.delete(msg.user_id);
           const cursors = new Map(get().cursors);
           cursors.delete(msg.user_id);
+          const presences = new Map(get().presences);
+          presences.delete(msg.user_id);
           // ユーザーのロックも削除
           const locks = new Map(get().locks);
           for (const [key, lock] of locks) {
@@ -114,7 +131,7 @@ export const useCollabStore = create<CollabState & CollabActions>()((set, get) =
               locks.delete(key);
             }
           }
-          set({ users, cursors, locks });
+          set({ users, cursors, locks, presences });
           break;
         }
         case 'cursor': {
@@ -126,6 +143,19 @@ export const useCollabStore = create<CollabState & CollabActions>()((set, get) =
             scene_id: msg.scene_id,
           });
           set({ cursors });
+          break;
+        }
+        case 'presence': {
+          const presences = new Map(get().presences);
+          presences.set(msg.user_id, {
+            user_id: msg.user_id,
+            scene_id: msg.scene_id,
+            scene_name: msg.scene_name,
+            selected_node_ids: msg.selected_node_ids,
+            selected_node_names: msg.selected_node_names,
+            view_tab: msg.view_tab,
+          });
+          set({ presences });
           break;
         }
         case 'lock': {

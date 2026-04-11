@@ -1,6 +1,7 @@
 import { useProjectStore } from '@/stores/projectStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useCollabStore } from '@/stores/collabStore';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
 import { useI18n } from '@/hooks/useI18n';
 
@@ -12,6 +13,8 @@ export function StatusBar() {
   const lastSavedAt = useEditorStore((s) => s.lastSavedAt);
   const isDirty = useEditorStore((s) => s.isDirty);
   const user = useAuthStore((s) => s.user);
+  const collabConnected = useCollabStore((s) => s.connected);
+  const collabUsers = useCollabStore((s) => s.users);
   const backendHealth = useBackendHealth();
 
   const lastSavedLabel = lastSavedAt
@@ -52,6 +55,14 @@ export function StatusBar() {
         <div className="flex items-center gap-1">
           <span style={{ color: 'var(--accent)' }}>{activeScene.name}</span>
           <span>({actorCount} actors, {messageCount} msgs)</span>
+        </div>
+      )}
+
+      {/* Collab users */}
+      {collabConnected && collabUsers.size > 0 && (
+        <div className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent)' }} />
+          <span>{collabUsers.size} online</span>
         </div>
       )}
 
