@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Actor } from '@/types/domain';
 
-export type EditorViewTab = 'scene' | 'actions' | 'data' | 'ui';
+export type EditorViewTab = 'scene' | 'actions' | 'data' | 'ui' | 'test';
 
 interface EditorState {
   activeViewTab: EditorViewTab;

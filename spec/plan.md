@@ -159,6 +159,19 @@ interface Project {
 | テスト定義 | 各タスクに対するテストケースの記述欄 |
 | バリデーション | 必須フィールドのチェック |
 
+### 4.5 テスト (Scene / UI と同列のトップレベルビュー)
+
+> 詳細仕様: [spec/rule/test-rules.md](./rule/test-rules.md)
+
+| 機能 | 詳細 |
+|------|------|
+| 機能テスト | コンポーネント / アクター要件からコード生成直後に自動生成。`test/functional/` に配置 |
+| 統合テスト | シーン構成から AI が骨子を下書き、人間が詳細を追記。`test/integration/` に配置 |
+| ドライバー管理 | 要件達成に必要な駆動コードを `test/drivers/` に機能ごと自動生成 |
+| テストモジュール | 「自由に移動する」等の再利用パーツ。`test/modules/` + `LUDIARS/Ars-TestModule` リポジトリ |
+| テスト実行 | Run All / Run Selected、失敗時は実装側を修正（code-test-rules.md と同方針） |
+| Ergo 優先 | テストモジュールは Ergo で表現可能なコンポーネントの駆動を最優先で定義 |
+
 ---
 
 ## 5. React Flow カスタムノード設計

@@ -5,6 +5,7 @@ const TABS: { key: EditorViewTab; label: string }[] = [
   { key: 'actions', label: 'Actions' },
   { key: 'data', label: 'Data' },
   { key: 'ui', label: 'UI' },
+  { key: 'test', label: 'Test' },
 ];
 
 export function ViewTabs() {
