@@ -1,9 +1,12 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-use ars_codegen::feedback::{detect_changes, ChangeKind, FeedbackInputs};
+use ars_codegen::feedback::{
+    apply_feedback, detect_changes, refresh_manifest, ChangeKind, FeedbackApplyOptions,
+    FeedbackInputs,
+};
 use ars_codegen::manifest::{CodegenManifest, FileKind};
-use ars_codegen::project_loader::{find_project_files, load_project};
+use ars_codegen::project_loader::{find_project_files, load_project, save_project};
 use ars_codegen::prompt_generator::PromptGenerator;
 use ars_codegen::session_runner::{
     build_manifest, CodegenConfig, SessionRunner,
@@ -71,6 +74,7 @@ enum Commands {
     ///
     /// `.ars-cache/codegen-manifest.json` を基準点として、最後の同期以降に
     /// 編集されたファイル (Added / Modified / Removed) を一覧表示する。
+    /// `--apply` 指定時は差分を Project / codedesign に書き戻す。
     Feedback {
         /// .ars.json プロジェクトファイル
         #[arg(short, long)]
@@ -81,6 +85,15 @@ enum Commands {
         /// codedesign ディレクトリ (デフォルト: {project_dir}/codedesign)
         #[arg(long)]
         codedesign: Option<String>,
+        /// 差分を実際に Project / codedesign に書き戻す
+        #[arg(long)]
+        apply: bool,
+        /// stale マーカーの追記を抑止する (apply 時)
+        #[arg(long)]
+        no_stale_marker: bool,
+        /// バックアップ作成を抑止する (apply 時)
+        #[arg(long)]
+        no_backup: bool,
     },
     /// 現在の codegen-manifest.json を表示
     Manifest {
@@ -250,7 +263,7 @@ async fn run(cli: Cli) -> Result<(), String> {
             }
             Ok(())
         }
-        Commands::Feedback { project, output, codedesign } => {
+        Commands::Feedback { project, output, codedesign, apply, no_stale_marker, no_backup } => {
             let pf = resolve_project_file(project.as_deref())?;
             let project_dir = pf
                 .parent()
@@ -263,12 +276,13 @@ async fn run(cli: Cli) -> Result<(), String> {
                 .unwrap_or_else(|| project_dir.join("codedesign"));
             let manifest_path = CodegenManifest::default_path(project_dir);
 
-            let report = detect_changes(&FeedbackInputs {
+            let inputs = FeedbackInputs {
                 project_file: &pf,
                 output_root: &output_root,
                 codedesign_root: Some(&cd_path),
                 manifest_path: &manifest_path,
-            })?;
+            };
+            let report = detect_changes(&inputs)?;
 
             println!("\n=== Codegen Feedback ===");
             println!("プロジェクト: {}", pf.display());
@@ -316,6 +330,63 @@ async fn run(cli: Cli) -> Result<(), String> {
                 };
                 println!("  {} [{}] {}{}", change, kind, c.path, entity);
             }
+
+            if !apply {
+                println!("\n（dry-run: 反映するには --apply を指定してください）");
+                return Ok(());
+            }
+
+            // ── --apply 指定時: codedesign → Project, code → stale マーカー ──
+            let mut proj = load_project(&pf)?;
+            let opts = FeedbackApplyOptions {
+                apply_codedesign_to_project: true,
+                mark_code_stale: !no_stale_marker,
+                backup_project: !no_backup,
+            };
+            let result = apply_feedback(&mut proj, &report, &inputs, &opts)?;
+
+            println!("\n=== Apply 結果 ===");
+            if let Some(backup) = &result.backup_path {
+                println!("バックアップ: {}", backup);
+            }
+            println!("Project 反映: {} 件", result.applied.len());
+            for a in &result.applied {
+                let entity = a
+                    .entity_name
+                    .as_deref()
+                    .map(|n| format!(" [{}]", n))
+                    .unwrap_or_default();
+                println!("  - {}{}: {}", a.path, entity, a.summary);
+            }
+            println!("stale マーカー追記: {} 件", result.stale_marked.len());
+            for s in &result.stale_marked {
+                println!("  - {}", s);
+            }
+            if !result.requires_review.is_empty() {
+                println!("要レビュー: {} 件", result.requires_review.len());
+                for r in &result.requires_review {
+                    let entity = r
+                        .entity_name
+                        .as_deref()
+                        .map(|n| format!(" [{}]", n))
+                        .unwrap_or_default();
+                    println!("  - {}{}: {}", r.path, entity, r.summary);
+                }
+            }
+
+            // Project を保存
+            if !result.applied.is_empty() {
+                save_project(&pf, &proj)?;
+                println!("\nプロジェクトを更新しました: {}", pf.display());
+            }
+
+            // manifest を最新化
+            if let Some(prev) = CodegenManifest::load_from(&manifest_path)? {
+                let next = refresh_manifest(&prev, &inputs)?;
+                next.save_to(&manifest_path)?;
+                println!("manifest を更新しました: {}", manifest_path.display());
+            }
+
             Ok(())
         }
         Commands::Manifest { project } => {
