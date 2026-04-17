@@ -24,6 +24,7 @@ import { ActionListView } from '@/features/action-editor/ActionListView';
 import { UIViewLayout } from '@/features/ui-view';
 import { DataViewLayout } from '@/features/data-view';
 import { TestViewLayout } from '@/features/test-view';
+import { LevelViewLayout } from '@/features/level-editor';
 import { safeLoadProject, getLastProjectPath } from '@/lib/project-loader';
 import { usePresenceTracker } from '@/hooks/usePresenceTracker';
 
@@ -153,6 +154,8 @@ export function EditorPage() {
         return <DataViewLayout />;
       case 'ui':
         return <UIViewLayout />;
+      case 'level':
+        return <LevelViewLayout />;
       case 'test':
         return <TestViewLayout />;
     }
