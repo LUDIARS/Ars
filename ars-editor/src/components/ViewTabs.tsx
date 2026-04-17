@@ -5,6 +5,7 @@ const TABS: { key: EditorViewTab; label: string }[] = [
   { key: 'actions', label: 'Actions' },
   { key: 'data', label: 'Data' },
   { key: 'ui', label: 'UI' },
+  { key: 'level', label: 'Level' },
   { key: 'test', label: 'Test' },
 ];
 
