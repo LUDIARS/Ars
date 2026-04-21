@@ -112,6 +112,12 @@ pub struct AssetMeta {
     pub triangle_count: u32,
     /// 頂点数 (原メッシュ)
     pub vertex_count: u32,
+    /// `proxy.glb` の三角形数 (P2 以降で書き込まれる)。
+    ///
+    /// P1 で生成された meta は本フィールドを持たないため、`#[serde(default)]`
+    /// で `None` として読み込まれる。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub proxy_triangle_count: Option<u32>,
 }
 
 impl AssetMeta {

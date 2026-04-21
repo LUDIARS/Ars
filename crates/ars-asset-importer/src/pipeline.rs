@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 use crate::loaders::{self, MeshData};
 use crate::schema::{AssetId, AssetMeta, Bounds, CacheLayout};
-use crate::{obb, AssetImporterError, Result};
+use crate::{obb, proxy_writer, simplify, AssetImporterError, Result};
 
 /// `process` の結果。キャッシュヒットかどうかを呼び出し側に伝える。
 #[derive(Debug, Clone)]
@@ -65,6 +65,18 @@ pub fn process(src: &Path, out_root: &Path, id: Option<AssetId>) -> Result<Proce
     let obb = obb::compute(&mesh.positions).ok_or(AssetImporterError::EmptyGeometry)?;
     let pivot = aabb.center().to_array();
 
+    // 書き出し (アトミックではないがローカル前提)
+    fs::create_dir_all(&dir).map_err(|e| AssetImporterError::io(&dir, e))?;
+
+    // 原アセットをコピー
+    let dst_src = layout.source_path(&source_ext);
+    fs::copy(src, &dst_src).map_err(|e| AssetImporterError::io(&dst_src, e))?;
+
+    // proxy.glb (P2): meshopt で decimate → 最小 GLB を書き出し
+    let proxy_mesh = simplify::simplify(&mesh, simplify::DEFAULT_TARGET_TRIANGLES);
+    proxy_writer::write_glb(&proxy_mesh, &layout.proxy_path())?;
+    let proxy_triangle_count = Some(proxy_mesh.triangle_count());
+
     let meta = AssetMeta {
         version: AssetMeta::CURRENT_VERSION,
         id: id.clone(),
@@ -76,14 +88,8 @@ pub fn process(src: &Path, out_root: &Path, id: Option<AssetId>) -> Result<Proce
         pivot,
         triangle_count: mesh.triangle_count(),
         vertex_count: mesh.vertex_count(),
+        proxy_triangle_count,
     };
-
-    // 書き出し (アトミックではないがローカル前提)
-    fs::create_dir_all(&dir).map_err(|e| AssetImporterError::io(&dir, e))?;
-
-    // 原アセットをコピー
-    let dst_src = layout.source_path(&source_ext);
-    fs::copy(src, &dst_src).map_err(|e| AssetImporterError::io(&dst_src, e))?;
 
     // meta.toml
     write_meta(&layout.meta_path(), &meta)?;

@@ -11,20 +11,24 @@
 //!
 //! 本クレートは **Tier 1 の生成**を担当する。描画側の対応は Pictor#37 を参照。
 //!
-//! ## P1 スコープ (本コミット)
+//! ## P1 (`#92` の Phase 1)
 //!
 //! - glTF ローダー
 //! - AABB / OBB 算出
 //! - source hash によるキャッシュ判定
 //! - `data/<id>/` レイアウト書き出し
 //!
-//! P2 以降 (meshopt simplify / 凸包 / サムネ) は stub として存在する。
+//! ## P2 (`#92` の Phase 2)
+//!
+//! - meshopt による mesh simplification
+//! - `proxy.glb` (positions + indices のみの最小 GLB) 書き出し
 
 pub mod error;
 pub mod hull;
 pub mod loaders;
 pub mod obb;
 pub mod pipeline;
+pub mod proxy_writer;
 pub mod schema;
 pub mod simplify;
 pub mod thumbnail;
