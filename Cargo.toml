@@ -7,6 +7,7 @@ members = [
     "crates/ars-codegen",
     "crates/ars-mcp-server",
     "crates/ars-data-organizer",
+    "crates/ars-asset-importer",
     "ars-editor/src-tauri",
 ]
 
