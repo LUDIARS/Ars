@@ -63,6 +63,49 @@ fn reprocessing_same_source_hits_cache() {
 }
 
 #[test]
+fn proxy_glb_is_written_and_recorded_in_meta() {
+    let tmp = TempDir::new().unwrap();
+    let src = tmp.path().join("p2.glb");
+    write_minimal_glb(&src, &[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]);
+
+    let out_root = tmp.path().join("data");
+    let id = AssetId::from_string("p2-asset");
+
+    let outcome = process(&src, &out_root, Some(id.clone())).unwrap();
+
+    let proxy_path = outcome.dir.join("proxy.glb");
+    assert!(proxy_path.exists(), "proxy.glb should be written");
+
+    let proxy_bytes = fs::read(&proxy_path).unwrap();
+    assert_eq!(&proxy_bytes[0..4], b"glTF", "proxy.glb must have GLB magic");
+
+    // gltf クレートで再ロードできること
+    let g = gltf::Gltf::from_slice(&proxy_bytes).expect("proxy.glb must be valid GLB");
+    let mesh = g.document.meshes().next().expect("proxy has mesh");
+    let prim = mesh.primitives().next().expect("proxy has primitive");
+    assert_eq!(prim.mode(), gltf::mesh::Mode::Triangles);
+
+    // meta に proxy_triangle_count が記録されている
+    assert_eq!(outcome.meta.proxy_triangle_count, Some(1));
+}
+
+#[test]
+fn proxy_glb_is_deterministic_across_runs() {
+    // 同一 src を別 ID でインポート → proxy.glb がバイト一致 (id は GLB に入らない)
+    let tmp = TempDir::new().unwrap();
+    let src = tmp.path().join("det.glb");
+    write_minimal_glb(&src, &[[0.0, 0.0, 0.0], [1.0, 2.0, 3.0], [4.0, 0.0, 0.0]]);
+    let out_root = tmp.path().join("data");
+
+    let a = process(&src, &out_root, Some(AssetId::from_string("a"))).unwrap();
+    let b = process(&src, &out_root, Some(AssetId::from_string("b"))).unwrap();
+
+    let bytes_a = fs::read(a.dir.join("proxy.glb")).unwrap();
+    let bytes_b = fs::read(b.dir.join("proxy.glb")).unwrap();
+    assert_eq!(bytes_a, bytes_b, "proxy.glb must be deterministic");
+}
+
+#[test]
 fn changed_source_invalidates_cache() {
     let tmp = TempDir::new().unwrap();
     let src = tmp.path().join("mutable.glb");
