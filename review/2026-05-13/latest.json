@@ -1,0 +1,92 @@
+{
+  "repo": "LUDIARS/Ars",
+  "local_path": "E:/Document/Ars/ars",
+  "review_date": "2026-05-13",
+  "scope": [
+    "README.md",
+    "spec/**",
+    ".github/workflows/**",
+    ".claude/**",
+    "mkdocs.yml"
+  ],
+  "out_of_scope": [
+    "crates/**",
+    "ars-editor/src/**",
+    "ars-editor/src-tauri/**",
+    "tools/**",
+    "tests/**"
+  ],
+  "ratings": {
+    "design": "B",
+    "vulnerability": "B",
+    "implementation": "C",
+    "missing_features": "B",
+    "quality": "B"
+  },
+  "weighted_score": 2.8,
+  "score_scale": "S=5, A=4, B=3, C=2, D=1; weighted_score = mean of 5 ratings",
+  "counts": {
+    "design": 5,
+    "vulnerability": 6,
+    "implementation": 5,
+    "missing_features": 7,
+    "quality": 7,
+    "total": 30
+  },
+  "autofix_count": 0,
+  "autofix_executed": false,
+  "headline_findings": [
+    {
+      "id": "I1",
+      "severity": "C",
+      "title": "spec/game-template が約 160 件の未定義 Feature ID を参照 (lexicon V02 違反)",
+      "ref": "spec/game-feature-coverage.md:11; spec/game-template/action/INDEX.md:29-34"
+    },
+    {
+      "id": "I4-1",
+      "severity": "C",
+      "title": "README が案内する `docker compose up -d` の docker-compose.yaml が不在",
+      "ref": "README.md:209"
+    },
+    {
+      "id": "Q1",
+      "severity": "C",
+      "title": "ジャンル命名が lexicon=kebab-case / game-template=snake_case で機械結合不能",
+      "ref": "spec/game-lexicon/README.md:41; spec/game-template/README.md:21-40"
+    }
+  ],
+  "stats": {
+    "tracked_files": 576,
+    "spec_docs_files": 195,
+    "game_template_files": 95,
+    "game_lexicon_files": 65,
+    "lexicon_features": 43,
+    "template_genres": 17,
+    "lexicon_genres": 9,
+    "template_full_subfolders_count": 3,
+    "ergo_direct_coverage_pct": 9,
+    "ergo_partial_coverage_pct": 23
+  },
+  "ci_workflows": [
+    "ci.yml",
+    "docker-publish.yml",
+    "integration-test.yml",
+    "pages.yml",
+    "update-web-version.yml"
+  ],
+  "review_files": [
+    "REVIEW.md",
+    "REVIEW_DESIGN.md",
+    "REVIEW_VULNERABILITY.md",
+    "REVIEW_IMPLEMENTATION.md",
+    "REVIEW_MISSING_FEATURES.md",
+    "REVIEW_QUALITY.md",
+    "AUTOFIX.md",
+    "latest.json"
+  ],
+  "generator": {
+    "agent": "claude-opus-4-7[1m]",
+    "skill": "ludiars-review",
+    "format": "AIFormat-5template"
+  }
+}
