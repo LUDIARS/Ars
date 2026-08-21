@@ -1,0 +1,11 @@
+{
+  "name": "asset-pipeline",
+  "description": "アセットの取り込みと整理。 インポータとデータ整理。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    {
+      "pathPattern": "(^|/)crates/ars-(?:asset-importer|data-organizer)/(?:.*/)?[^/]+$"
+    }
+  ]
+}

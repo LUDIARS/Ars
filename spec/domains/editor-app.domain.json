@@ -1,0 +1,11 @@
+{
+  "name": "editor-app",
+  "description": "エディタアプリ。 画面と操作、 デスクトップの器。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    {
+      "pathPattern": "(^|/)ars-editor/(?:.*/)?[^/]+$"
+    }
+  ]
+}

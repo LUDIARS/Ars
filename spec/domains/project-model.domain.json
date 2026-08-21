@@ -1,0 +1,11 @@
+{
+  "name": "project-model",
+  "description": "Ars プロジェクトのモデル。 プロジェクト定義と中核データ構造。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    {
+      "pathPattern": "(^|/)crates/ars-(?:core|project)/(?:.*/)?[^/]+$"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "mcp-server",
+  "description": "MCP サーバ。 外部エージェントへの機能提供。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    {
+      "pathPattern": "(^|/)crates/ars-mcp-server/(?:.*/)?[^/]+$"
+    }
+  ]
+}

@@ -10,7 +10,7 @@
     "clean": "npx rimraf ars-editor/dist && cargo clean --manifest-path ars-editor/src-tauri/Cargo.toml",
     "tauri:dev": "npm run tauri:dev --prefix ars-editor",
     "tauri:build": "npm run tauri:build --prefix ars-editor",
-    "lint": "npm run lint --prefix ars-editor",
+    "lint": "node scripts/lint.mjs",
     "env:setup": "npx tsx ../Cernere/packages/env-cli/src/cli.ts setup",
     "env:test": "npx tsx ../Cernere/packages/env-cli/src/cli.ts test",
     "env:initialize": "npx tsx ../Cernere/packages/env-cli/src/cli.ts initialize",

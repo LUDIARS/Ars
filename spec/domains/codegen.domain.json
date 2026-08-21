@@ -1,0 +1,11 @@
+{
+  "name": "codegen",
+  "description": "コード生成。 定義からの生成処理とゲーム語彙。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    {
+      "pathPattern": "(^|/)crates/ars-(?:codegen|game-lexicon)/(?:.*/)?[^/]+$"
+    }
+  ]
+}
