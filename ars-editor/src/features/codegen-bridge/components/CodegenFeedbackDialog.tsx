@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useEditorStore } from '@/stores/editorStore';
 import * as backend from '@/lib/backend';
@@ -46,6 +46,7 @@ export function CodegenFeedbackDialog({ onClose }: { onClose: () => void }) {
   const loadProject = useProjectStore((s) => s.loadProject);
   const projectPath = useEditorStore((s) => s.projectPath);
 
+  const didAutoDetect = useRef(false);
   const [phase, setPhase] = useState<Phase>('detect');
   const [report, setReport] = useState<FeedbackReport | null>(null);
   const [applyResult, setApplyResult] = useState<ApplyResult | null>(null);
@@ -65,13 +66,6 @@ export function CodegenFeedbackDialog({ onClose }: { onClose: () => void }) {
     maxConcurrent: 1,
   }), [outputDir]);
 
-  // Auto-detect on mount
-  useEffect(() => {
-    if (!projectPath) return;
-    handleDetect();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const handleDetect = useCallback(async () => {
     if (!projectPath) {
       setError('Project file path is not set. Save your project first.');
@@ -89,6 +83,13 @@ export function CodegenFeedbackDialog({ onClose }: { onClose: () => void }) {
       setLoading(false);
     }
   }, [projectPath, buildConfig]);
+
+  // Auto-detect on mount (once)
+  useEffect(() => {
+    if (!projectPath || didAutoDetect.current) return;
+    didAutoDetect.current = true;
+    handleDetect();
+  }, [projectPath, handleDetect]);
 
   const handleApply = useCallback(async () => {
     if (!projectPath || !report) return;

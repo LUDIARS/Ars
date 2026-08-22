@@ -1,0 +1,15 @@
+{
+  "name": "data-inspection",
+  "description": "データビュー・アセットブラウザによるプロジェクトデータの閲覧・検査フィーチャー群。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    { "pathPattern": "(^|/)ars-editor/src/features/data-view/[^/]+$" },
+    { "pathPattern": "(^|/)ars-editor/src/features/data-view/[^/]+/[^/]+$" },
+    { "pathPattern": "(^|/)ars-editor/src/features/asset-browser/[^/]+$" },
+    { "pathPattern": "(^|/)ars-editor/src/features/asset-browser/[^/]+/[^/]+$" },
+    { "pathPattern": "(^|/)ars-editor/src/features/data-view/__tests__/[^/]+$" },
+    { "pathPattern": "(^|/)ars-editor/src/features/asset-browser/__tests__/[^/]+$" }
+  ],
+  "cardTemplate": "Summarise the \"data-inspection\" domain: データビュー・アセットブラウザによるプロジェクトデータの閲覧・検査フィーチャー群。"
+}

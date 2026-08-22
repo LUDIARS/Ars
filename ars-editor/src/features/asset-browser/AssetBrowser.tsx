@@ -46,9 +46,22 @@ export function AssetBrowser() {
     }
   }, [projectDir]);
 
+  // projectDir が決まった時点で一覧を初期ロードする。refresh 自体は D&D 後の
+  // 再読み込みにも使うが、ここでは cancelled ガードのため直接呼ぶ。
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (!projectDir) return;
+    let cancelled = false;
+    listImportedAssets(projectDir)
+      .then((list) => {
+        if (!cancelled) setAssets(list);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(String(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectDir]);
 
   // Tauri webview drag-drop event は OS から受け取った絶対パスをそのまま渡せる。
   // ブラウザ版は File オブジェクト経由になるためパスが取れず、現状未対応 (P6 で multipart)。

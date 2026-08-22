@@ -1,11 +1,16 @@
 {
   "name": "codegen",
-  "description": "コード生成。 定義からの生成処理とゲーム語彙。",
+  "description": "コード生成。ars-codegen によるプラットフォーム別ソース生成とゲーム語彙を扱う。",
   "presetRules": [],
   "templateRules": [],
   "membership": [
-    {
-      "pathPattern": "(^|/)crates/ars-(?:codegen|game-lexicon)/(?:.*/)?[^/]+$"
-    }
-  ]
+    { "pathPattern": "(^|/)crates/ars-(?:codegen|game-lexicon)/(?:.*/)?[^/]+$" },
+    { "pathPattern": "(^|/)tools/ars-codegen/[^/]+$" },
+    { "pathPattern": "(^|/)tools/ars-codegen/src/[^/]+$" },
+    { "pathPattern": "(^|/)tools/ars-codegen/src/[^/]+/[^/]+$" },
+    { "pathPattern": "(^|/)ars-editor/src/features/codegen-bridge/[^/]+$" },
+    { "pathPattern": "(^|/)ars-editor/src/features/codegen-bridge/components/[^/]+$" },
+    { "pathPattern": "(^|/)ars-editor/src/features/codegen-bridge/__tests__/[^/]+$" }
+  ],
+  "cardTemplate": "Summarise the \"codegen\" domain: ars-codegen によるコード生成とゲーム語彙。"
 }

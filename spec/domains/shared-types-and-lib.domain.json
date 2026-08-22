@@ -1,0 +1,15 @@
+{
+  "name": "shared-types-and-lib",
+  "description": "生成型・共有型定義・共通ユーティリティ・フック・共通コンポーネント。フロントエンド全体が依存する横断的基盤。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    { "pathPattern": "(^|/)ars-editor/src/types/[^/]+$" },
+    { "pathPattern": "(^|/)ars-editor/src/types/generated/[^/]+$" },
+    { "pathPattern": "(^|/)ars-editor/src/lib/[^/]+$" },
+    { "pathPattern": "(^|/)ars-editor/src/hooks/[^/]+$" },
+    { "pathPattern": "(^|/)ars-editor/src/components/[^/]+$" },
+    { "pathPattern": "(^|/)ars-editor/src/components/__tests__/[^/]+$" }
+  ],
+  "cardTemplate": "Summarise the \"shared-types-and-lib\" domain: 生成型・共有型定義・共通ユーティリティ・フック・共通コンポーネント。フロントエンド全体が依存する横断的基盤。"
+}

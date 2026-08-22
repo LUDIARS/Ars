@@ -232,17 +232,6 @@ export function ProjectWizard({ onClose }: ProjectWizardProps) {
     setStep('name');
   }, []);
 
-  const handleNameNext = useCallback(() => {
-    if (!projectName.trim()) return;
-    if (user) {
-      setStep('github');
-    } else {
-      // No GitHub user — just create the project locally
-      finishCreate(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectName, user]);
-
   const finishCreate = useCallback(async (withGitHub: boolean) => {
     if (!selectedTemplate || !projectName.trim()) return;
 
@@ -281,6 +270,16 @@ export function ProjectWizard({ onClose }: ProjectWizardProps) {
       setLoading(false);
     }
   }, [selectedTemplate, projectName, repoPrivate, user, setActiveGitRepo, fetchGitRepos, fetchLocalGitProjects, onClose]);
+
+  const handleNameNext = useCallback(() => {
+    if (!projectName.trim()) return;
+    if (user) {
+      setStep('github');
+    } else {
+      // No GitHub user — just create the project locally
+      finishCreate(false);
+    }
+  }, [projectName, user, finishCreate]);
 
   const handleBack = useCallback(() => {
     setError('');
