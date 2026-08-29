@@ -56,9 +56,9 @@ jobs:
       - name: Lint
         working-directory: ars-editor
         run: npm run lint
-      - name: TypeScript check
+      - name: Build frontend
         working-directory: ars-editor
-        run: npx tsc -b
+        run: npm run build
 
   rust:
     name: Rust
