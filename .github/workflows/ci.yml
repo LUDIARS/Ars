@@ -35,6 +35,8 @@ jobs:
             rust:
               - 'ars-editor/src-tauri/**'
               - 'crates/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
 
   frontend:
     name: Frontend
