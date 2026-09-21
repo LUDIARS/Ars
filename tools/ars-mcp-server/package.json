@@ -7,6 +7,9 @@
   "bin": {
     "ars-mcp-server": "dist/index.js"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -18,7 +21,7 @@
   },
   "overrides": {
     "hono": "^4.12.12",
-    "@hono/node-server": "^1.19.13",
+    "@hono/node-server": "^2.1.1",
     "path-to-regexp": "^8.4.0"
   },
   "devDependencies": {
