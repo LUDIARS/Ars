@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawnOneShot as spawn } from '@ludiars/one-shot';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { CodegenTask, CodegenResult, CodegenConfig } from './types.js';
@@ -168,7 +168,7 @@ export class SessionRunner {
       }
       // CLAUDE_ prefix の設定は渡す（CLIの設定用）
       for (const [key, value] of Object.entries(process.env)) {
-        if (key.startsWith('CLAUDE_') && value) {
+        if ((key.startsWith('CLAUDE_') || key.startsWith('LUDIARS_ONESHOT_MODEL_')) && value) {
           safeEnv[key] = value;
         }
       }

@@ -168,9 +168,15 @@ async fn run_single_task(
     let safe_env_keys = [
         "PATH", "HOME", "USER", "SHELL", "LANG", "LC_ALL", "LC_CTYPE",
         "TERM", "TMPDIR", "TMP", "TEMP", "NODE_ENV",
+        "SystemRoot", "SYSTEMROOT", "APPDATA", "LOCALAPPDATA", "USERPROFILE",
+        "HOMEDRIVE", "HOMEPATH", "PATHEXT", "ComSpec",
     ];
-    let mut cmd = Command::new("claude");
-    cmd.args(&args).current_dir(&task.output_dir);
+    let script = std::env::var_os("ARS_ONE_SHOT_CLI").map(PathBuf::from)
+        .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../lib/lapilli/packages/one-shot/src/cli.js"));
+    let node = std::env::var_os("ARS_NODE_BIN").unwrap_or_else(|| "node".into());
+    let mut cmd = shared_cli_command(&node, &script, &args);
+    cmd.current_dir(&task.output_dir);
     cmd.env_clear();
     for key in &safe_env_keys {
         if let Ok(val) = std::env::var(key) {
@@ -179,7 +185,7 @@ async fn run_single_task(
     }
     // CLAUDE_ prefix
     for (key, value) in std::env::vars() {
-        if key.starts_with("CLAUDE_") {
+        if key.starts_with("CLAUDE_") || key.starts_with("LUDIARS_ONESHOT_MODEL_") {
             cmd.env(&key, &value);
         }
     }
@@ -353,5 +359,24 @@ fn visit_md_files<F: FnMut(&Path)>(dir: &Path, visitor: &mut F) {
         } else if path.extension().map(|e| e == "md").unwrap_or(false) {
             visitor(&path);
         }
+    }
+}
+
+/// Keep library paths and caller arguments separate from shell syntax.
+fn shared_cli_command(node: &std::ffi::OsStr, script: &Path, args: &[String]) -> Command {
+    let mut cmd = Command::new(node);
+    cmd.arg(script).arg("claude").args(args);
+    cmd
+}
+
+#[cfg(test)]
+mod shared_cli_tests {
+    use super::*;
+    #[test]
+    fn preserves_paths_and_prompt_as_distinct_arguments() {
+        let args = vec!["--print".into(), "--prompt".into(), "spaces & quotes \"stay\"".into()];
+        let command = shared_cli_command(std::ffi::OsStr::new("node"), Path::new("library with spaces/cli.js"), &args);
+        let actual: Vec<_> = command.as_std().get_args().map(|v| v.to_string_lossy().into_owned()).collect();
+        assert_eq!(actual, vec!["library with spaces/cli.js", "claude", "--print", "--prompt", "spaces & quotes \"stay\""]);
     }
 }

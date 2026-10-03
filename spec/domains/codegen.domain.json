@@ -4,13 +4,30 @@
   "presetRules": [],
   "templateRules": [],
   "membership": [
-    { "pathPattern": "(^|/)crates/ars-(?:codegen|game-lexicon)/(?:.*/)?[^/]+$" },
-    { "pathPattern": "(^|/)tools/ars-codegen/[^/]+$" },
-    { "pathPattern": "(^|/)tools/ars-codegen/src/[^/]+$" },
-    { "pathPattern": "(^|/)tools/ars-codegen/src/[^/]+/[^/]+$" },
-    { "pathPattern": "(^|/)ars-editor/src/features/codegen-bridge/[^/]+$" },
-    { "pathPattern": "(^|/)ars-editor/src/features/codegen-bridge/components/[^/]+$" },
-    { "pathPattern": "(^|/)ars-editor/src/features/codegen-bridge/__tests__/[^/]+$" }
+    {
+      "pathPattern": "(^|/)crates/ars-(?:codegen|game-lexicon)/(?:.*/)?[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)tools/ars-codegen/[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)tools/ars-codegen/src/[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)tools/ars-codegen/src/[^/]+/[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)ars-editor/src/features/codegen-bridge/[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)ars-editor/src/features/codegen-bridge/components/[^/]+$"
+    },
+    {
+      "pathPattern": "(^|/)ars-editor/src/features/codegen-bridge/__tests__/[^/]+$"
+    }
   ],
-  "cardTemplate": "Summarise the \"codegen\" domain: ars-codegen によるコード生成とゲーム語彙。"
+  "cardTemplate": "Summarise the \"codegen\" domain: ars-codegen によるコード生成とゲーム語彙。",
+  "specRefs": [
+    "spec/feature/shared-one-shot.md"
+  ]
 }
