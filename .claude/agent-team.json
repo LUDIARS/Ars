@@ -12,7 +12,7 @@
     "api": {
       "description": "Anthropic API経由でエージェントを起動",
       "sdk": "@anthropic-ai/sdk",
-      "model": "claude-sonnet-4-20250514",
+      "model": "sonnet",
       "maxTokens": 8192
     }
   },

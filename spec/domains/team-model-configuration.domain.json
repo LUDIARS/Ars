@@ -1,0 +1,15 @@
+{
+  "name": "team-model-configuration",
+  "description": "チーム API のモデル役割設定と、その解決結果を確認する回帰テスト・Augur 契約。",
+  "presetRules": [],
+  "templateRules": [],
+  "membership": [
+    { "pathPattern": "(^|/)\\.claude/agent-team\\.json$" },
+    { "pathPattern": "(^|/)contracts/(?:contract-runtime|team-model-role\\.contract)\\.mjs$" },
+    { "pathPattern": "(^|/)tests/model-role-map\\.test\\.js$" }
+  ],
+  "cardTemplate": "チーム API のモデル役割設定、Lapilli による役割解決、その回帰テストと Augur 契約を要約する。",
+  "specRefs": [
+    "spec/feature/shared-one-shot.md"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "service": "ars",
+  "include": ["tests/model-role-map.test.js"],
+  "rules": {
+    "contract-wrap": true
+  }
+}

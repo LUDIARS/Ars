@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "contractsDir": "contracts",
+  "importFrom": "../contracts/contract-runtime.mjs",
+  "runtimeFile": "contracts/contract-runtime.mjs",
+  "contracts": [
+    {
+      "id": "C-1",
+      "criterion": "C-1 resolveTeamModel(team, env): API の既定値 sonnet は Concordia の役割対応表から解決し、明示されたモデル ID は保持する",
+      "file": "tests/model-role-map.test.js",
+      "symbol": "resolveTeamModel",
+      "module": "contracts/team-model-role.contract.mjs",
+      "mode": "observe",
+      "sample": 1
+    }
+  ]
+}
